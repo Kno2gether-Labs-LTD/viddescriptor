@@ -91,7 +91,7 @@ const DEFAULT_SITE_URL = 'https://viddescriptor.kno2gether.com';
 const DEFAULT_SUPPORT_EMAIL = 'support@kno2gether.com';
 // Placeholder — real deployments should set VITE_PORTAL_URL to their white-label portal.
 const DEFAULT_PORTAL_URL = 'https://viddescriptor.kno2gether.com';
-const DEFAULT_GITHUB_URL = 'https://github.com/kno2gether/viddescriptor';
+const DEFAULT_GITHUB_URL = 'https://github.com/Kno2gether-Labs-LTD/viddescriptor';
 const DEFAULT_FREE_CREDITS = 300;
 // `{freeCredits}` is interpolated with the resolved freeCredits value (see
 // buildConfig) — no implied event ("launch week"), just the real offer.

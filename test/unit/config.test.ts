@@ -20,7 +20,7 @@ describe('buildConfig defaults (Viddescriptor brand)', () => {
     expect(config.supportEmail).toBe('support@kno2gether.com');
     expect(config.portalUrl).toBe('https://viddescriptor.kno2gether.com');
     expect(config.portalUrl.length).toBeGreaterThan(0);
-    expect(config.githubUrl).toBe('https://github.com/kno2gether/viddescriptor');
+    expect(config.githubUrl).toBe('https://github.com/Kno2gether-Labs-LTD/viddescriptor');
     expect(config.socials).toEqual([]);
   });
 

@@ -20,7 +20,7 @@ Live reference deployment: **https://viddescriptor.kno2gether.com**
 ## Quickstart (5 minutes)
 
 ```bash
-git clone https://github.com/kno2gether/viddescriptor.git
+git clone https://github.com/Kno2gether-Labs-LTD/viddescriptor.git
 cd viddescriptor
 npm install
 
@@ -117,8 +117,8 @@ Everything is `.env`-driven. Public `VITE_*` vars are build-time only — they g
 | `VITE_LOGO_URL` | *(unset — text wordmark)* | Optional logo image URL |
 | `VITE_SITE_URL` | `https://viddescriptor.kno2gether.com` | Canonical URL; also used to build the Worker's payment success/cancel redirect target (see `SITE_URL` below — keep these in sync) |
 | `VITE_SUPPORT_EMAIL` | `support@kno2gether.com` | Footer + error-state contact address |
-| `VITE_PORTAL_URL` | `https://viddescriptor.kno2gether.com` *(placeholder)* | White-label portal base URL; the post-signup "log in" CTA links to `{VITE_PORTAL_URL}/login` — **set this before going live** |
-| `VITE_GITHUB_URL` | `https://github.com/kno2gether/viddescriptor` *(placeholder)* | Open-source backlink; point at your own fork |
+| `VITE_PORTAL_URL` | `https://viddescriptor.kno2gether.com` | White-label portal base URL; the post-signup "log in" CTA links to `{VITE_PORTAL_URL}/login` — **set this before going live** |
+| `VITE_GITHUB_URL` | `https://github.com/Kno2gether-Labs-LTD/viddescriptor` | Open-source backlink; point at your own fork |
 | `VITE_SOCIALS_JSON` | `[]` | JSON array of extra footer social links, e.g. `[{"label":"X","href":"https://x.com/you"}]` |
 | `VITE_FREE_CREDITS` | `300` | Free credits granted on signup — shown in copy *and* sent as the onboarding grant amount; keep equal to the Worker's `FREE_CREDITS` |
 | `VITE_UPSELL_AMOUNT_LABEL` | `$9` | Upsell price display copy |
