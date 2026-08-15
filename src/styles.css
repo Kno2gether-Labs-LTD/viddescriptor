@@ -1,0 +1,324 @@
+:root {
+  --color-bg: #0a0a09;
+  --color-bg-raised: #0d0d0b;
+  --color-bg-card: #0e0e0c;
+  --color-ink: #f5f3ee;
+  --color-accent: oklch(0.78 0.19 85);
+  --color-accent2: oklch(0.7 0.23 300);
+  --color-good: oklch(0.75 0.2 145);
+
+  --font-display: 'Anton', sans-serif;
+  --font-body: 'Archivo', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* The `hidden` attribute's UA default (`display: none`) is a *normal*-
+ * priority author-origin-losing rule — any author stylesheet rule that also
+ * sets `display` on the same element (e.g. `.hc-gallery-more-row { display:
+ * grid }`) wins the cascade regardless of selector specificity, since author
+ * origin always beats user-agent origin. That silently un-hides
+ * mounted-but-`hidden` expander panels the moment they carry a `display`-
+ * setting class. Force it back with `!important` so `hidden` always wins,
+ * for every element on the page. */
+[hidden] {
+  display: none !important;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+a:hover {
+  color: #fff;
+}
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Keyframes ported from the reference deck                               */
+/* ---------------------------------------------------------------------- */
+
+@keyframes hcMarquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes hcPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes hcRise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes hcGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.78 0.19 85 / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 46px 4px oklch(0.78 0.19 85 / 0.3);
+  }
+}
+@keyframes hcSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(120%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes hcColUp {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes hcColDown {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes hcPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Animation utility classes                                              */
+/* ---------------------------------------------------------------------- */
+
+.hc-pulse-dot {
+  animation: hcPulse 1.1s infinite;
+}
+.hc-pulse-dot-slow {
+  animation: hcPulse 1.4s infinite;
+}
+.hc-glow-btn {
+  animation: hcGlow 2.6s infinite;
+}
+.hc-glow-btn-fast {
+  animation: hcGlow 2.4s infinite;
+}
+.hc-pop {
+  animation: hcPop 0.3s both;
+}
+.hc-slide-up {
+  animation: hcSlideUp 0.35s both;
+}
+/* Hero premium-entrance stagger — headline/prompt-box/stats fade+rise in,
+ * staggered via inline `animation-delay` (see Hero.tsx's `riseProps`). */
+.hc-rise {
+  animation: hcRise 0.9s ease both;
+}
+.hc-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: hcMarquee 26s linear infinite;
+}
+
+.hc-wall-col {
+  overflow: hidden;
+  position: relative;
+}
+.hc-wall-col-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hc-wall-col-1 {
+  animation: hcColUp 34s linear infinite;
+}
+.hc-wall-col-2 {
+  animation: hcColDown 40s linear infinite;
+}
+.hc-wall-col-3 {
+  animation: hcColUp 44s linear infinite;
+}
+.hc-wall-col-4 {
+  animation: hcColDown 30s linear infinite;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Hover states (ported from `style-hover` attrs in the reference deck)   */
+/* ---------------------------------------------------------------------- */
+
+.hc-card-hover {
+  transition: border-color 0.15s ease;
+}
+.hc-card-hover:hover {
+  border-color: var(--color-accent) !important;
+}
+
+.hc-chip-hover {
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.hc-chip-hover:hover {
+  border-color: var(--color-accent) !important;
+  color: #fff !important;
+}
+
+.hc-recipe-row-hover {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.hc-recipe-row-hover:hover {
+  border-color: var(--color-accent) !important;
+  background: #121210 !important;
+}
+
+.hc-link-hover {
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.hc-link-hover:hover {
+  border-color: var(--color-accent) !important;
+  color: var(--color-accent) !important;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Responsive: TopBar nav links hidden below 900px so the wordmark + CTA  */
+/* don't get squeezed into horizontal overflow (390px viewport QA fix)    */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .topbar-nav {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Gallery "More generations" expander — aspect-aware layout               */
+/*                                                                          */
+/* Uniform-height grid cells forced the two 16:9 clips into the same tall  */
+/* box as the 9:16 clip (grid items stretch to the row height by default), */
+/* leaving a black void under the landscape tiles. Instead: left column    */
+/* stacks the two 16:9 tiles at their own aspect ratio; right column holds */
+/* the 9:16 tile spanning both rows, sized to whatever height the left     */
+/* column's content produces (no aspect-ratio of its own) and filled with  */
+/* object-fit: cover, absorbing the residual difference. Single column,   */
+/* natural aspect per tile, below 720px.                                  */
+/* ---------------------------------------------------------------------- */
+
+.hc-gallery-more-row {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  grid-template-rows: auto auto;
+  gap: 14px;
+}
+.hc-gallery-more-a {
+  grid-column: 1;
+  grid-row: 1;
+}
+.hc-gallery-more-b {
+  grid-column: 1;
+  grid-row: 2;
+}
+.hc-gallery-more-c {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  height: 100%;
+}
+.hc-gallery-more-c-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 720px) {
+  .hc-gallery-more-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .hc-gallery-more-a,
+  .hc-gallery-more-b,
+  .hc-gallery-more-c {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .hc-gallery-more-c {
+    height: auto;
+  }
+  .hc-gallery-more-c-video {
+    position: static;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 9/16;
+  }
+}
+
+/* Respect reduced-motion preferences across every looping/glowing animation. */
+@media (prefers-reduced-motion: reduce) {
+  .hc-pulse-dot,
+  .hc-pulse-dot-slow,
+  .hc-glow-btn,
+  .hc-glow-btn-fast,
+  .hc-rise,
+  .hc-marquee-track,
+  .hc-wall-col-1,
+  .hc-wall-col-2,
+  .hc-wall-col-3,
+  .hc-wall-col-4 {
+    animation: none;
+  }
+}

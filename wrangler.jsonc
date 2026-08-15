@@ -1,0 +1,17 @@
+{
+  "name": "viddescriptor",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application" },
+  "routes": [{ "pattern": "viddescriptor.kno2gether.com", "custom_domain": true }],
+  "vars": {
+    "PARTNER_API_BASE": "https://app.knotie-ai.pro",
+    "EXPERIENCE_TYPE": "media_studio",
+    "FREE_CREDITS": "300",
+    "UPSELL_AMOUNT_CENTS": "900",
+    "UPSELL_CURRENCY": "usd",
+    // set to your real top-up (e.g. 500) once the platform payment-link credit grant (knotie media_studio_v5+) is deployed
+    "UPSELL_CREDITS": "0",
+    "SITE_URL": "https://viddescriptor.kno2gether.com"
+  }
+}

@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local development (`wrangler dev` loads this automatically).
+# .dev.vars is gitignored — never commit real secrets.
+
+# Partner API key used to authenticate server-to-server calls to PARTNER_API_BASE.
+PARTNER_API_KEY=
+
+# Optional: override the free plan id used when onboarding new customers.
+FREE_PLAN_ID=
