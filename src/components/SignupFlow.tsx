@@ -36,6 +36,56 @@ const VERIFY_POLL_MS = 2500;
 const VERIFY_MAX_ATTEMPTS = 8;
 const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
+// `?render=explicit` disables Turnstile's implicit auto-scan-and-render of
+// any `.cf-turnstile` div on script load — required here since the widget
+// is rendered explicitly (via window.turnstile.render, below) rather than
+// left to the script's own DOM scan, which would otherwise double-render it.
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  action?: string;
+  theme?: 'light' | 'dark' | 'auto';
+  callback?: (token: string) => void;
+  'error-callback'?: () => void;
+  'expired-callback'?: () => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement | string, options: TurnstileRenderOptions) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
+/**
+ * Injects the Turnstile script exactly once (checked via a DOM query, not a
+ * module-level flag, so it survives the component unmounting/remounting
+ * across modal open/close cycles) and calls `onLoad` once it's ready. If
+ * `window.turnstile` is already present — as it is in tests that stub it
+ * directly — `onLoad` fires synchronously.
+ */
+function loadTurnstileScript(onLoad: () => void): void {
+  if (window.turnstile) {
+    onLoad();
+    return;
+  }
+  const existing = document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_SRC}"]`);
+  if (existing) {
+    existing.addEventListener('load', onLoad, { once: true });
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = TURNSTILE_SCRIPT_SRC;
+  script.async = true;
+  script.defer = true;
+  script.addEventListener('load', onLoad, { once: true });
+  document.head.appendChild(script);
+}
+
 const initialState: SignupFlowState = {
   open: false,
   step: 'email',
@@ -164,7 +214,7 @@ export type UseSignupFlowResult = {
   state: SignupFlowState;
   openFlow: () => void;
   closeFlow: () => void;
-  submitEmail: (email: string) => void;
+  submitEmail: (email: string, turnstileToken?: string) => void;
   continueToUpsell: () => void;
   startCheckout: () => void;
   skipUpsell: () => void;
@@ -177,11 +227,11 @@ export function useSignupFlow(): UseSignupFlowResult {
   const openFlow = useCallback(() => dispatch({ type: 'OPEN' }), []);
   const closeFlow = useCallback(() => dispatch({ type: 'CLOSE' }), []);
 
-  const submitEmail = useCallback((email: string) => {
+  const submitEmail = useCallback((email: string, turnstileToken?: string) => {
     dispatch({ type: 'SUBMIT_EMAIL_START', email });
     void (async () => {
       try {
-        const res = await signup(email);
+        const res = await signup(email, turnstileToken);
         writeSessionItem(SESSION_CUSTOMER_KEY, res.customerId);
         dispatch({
           type: 'SUBMIT_EMAIL_SUCCESS',
@@ -402,7 +452,7 @@ export type SignupFlowProps = {
   step: FlowStep;
   state: SignupFlowState;
   onClose: () => void;
-  onSubmitEmail: (email: string) => void;
+  onSubmitEmail: (email: string, turnstileToken?: string) => void;
   onContinueToUpsell: () => void;
   onStartCheckout: () => void;
   onSkipUpsell: () => void;
@@ -412,22 +462,69 @@ export type SignupFlowProps = {
 export function SignupFlow(props: SignupFlowProps): ReactElement | null {
   const { open, step, state, onClose, onSubmitEmail, onContinueToUpsell, onStartCheckout, onSkipUpsell, onRetry } = props;
   const [emailInput, setEmailInput] = useState(state.email);
+  const turnstileSiteKey = siteConfig.turnstileSiteKey;
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setEmailInput(state.email);
   }, [state.email]);
+
+  // Renders the Turnstile widget only while the modal is open and on the
+  // email step — i.e. only while `<div ref={turnstileContainerRef}>` is
+  // actually mounted below. Loads the api.js script lazily (once, cached by
+  // a DOM query) so a deployment with no sitekey configured never makes this
+  // request at all. Re-runs (removing then re-rendering the widget) whenever
+  // this step is (re-)entered, which is exactly what gives "Try again" from
+  // an error a fresh, unsolved widget instead of a stale token.
+  useEffect(() => {
+    if (!turnstileSiteKey || !open || step !== 'email') return;
+    let cancelled = false;
+
+    const renderWidget = () => {
+      if (cancelled) return;
+      const container = turnstileContainerRef.current;
+      const turnstile = window.turnstile;
+      if (!container || !turnstile) return;
+      turnstileWidgetIdRef.current = turnstile.render(container, {
+        sitekey: turnstileSiteKey,
+        action: 'turnstile-spin-v2',
+        theme: 'dark',
+        callback: (token) => setTurnstileToken(token),
+        'error-callback': () => setTurnstileToken(''),
+        'expired-callback': () => setTurnstileToken(''),
+      });
+    };
+
+    loadTurnstileScript(renderWidget);
+
+    return () => {
+      cancelled = true;
+      if (turnstileWidgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetIdRef.current);
+      }
+      turnstileWidgetIdRef.current = null;
+      setTurnstileToken('');
+    };
+  }, [turnstileSiteKey, open, step]);
 
   if (!open) return null;
 
   const progress = progressPosition(step, state.retryTo);
   const copy = stepCopy(step, state);
   const portalLoginUrl = `${siteConfig.portalUrl}/login`;
+  // Managed-mode Turnstile usually resolves non-interactively within a
+  // moment of mounting; while configured and not yet resolved, submission
+  // is held rather than sent tokenless (the Worker would just 403 it).
+  const turnstilePending = Boolean(turnstileSiteKey) && turnstileToken === '';
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = emailInput.trim();
     if (trimmed === '') return;
-    onSubmitEmail(trimmed);
+    if (turnstilePending) return;
+    onSubmitEmail(trimmed, turnstileSiteKey ? turnstileToken : undefined);
   };
 
   return (
@@ -507,7 +604,7 @@ export function SignupFlow(props: SignupFlowProps): ReactElement | null {
                 />
                 <button
                   type="submit"
-                  disabled={state.submitting}
+                  disabled={state.submitting || turnstilePending}
                   style={{
                     border: 0,
                     cursor: 'pointer',
@@ -521,6 +618,16 @@ export function SignupFlow(props: SignupFlowProps): ReactElement | null {
                   {state.submitting ? 'Claiming…' : 'Claim credits'}
                 </button>
               </div>
+              {turnstileSiteKey && (
+                <div
+                  ref={turnstileContainerRef}
+                  className="cf-turnstile"
+                  data-sitekey={turnstileSiteKey}
+                  data-action="turnstile-spin-v2"
+                  data-theme="dark"
+                  style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}
+                />
+              )}
               <div style={{ marginTop: 14, font: "400 11.5px/1.6 var(--font-mono, monospace)", color: 'rgba(245,243,238,.42)' }}>
                 NO CARD · NO WATERMARK · CREDITS NEVER EXPIRE
               </div>

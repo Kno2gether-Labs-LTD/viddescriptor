@@ -72,6 +72,12 @@ export type SiteConfig = {
    *  fabricated quotes ship for a fresh white-label deploy. The Compare
    *  section's testimonial cards render only when this is non-empty. */
   testimonials: Testimonial[];
+  /** Cloudflare Turnstile sitekey (public, safe to bundle client-side).
+   *  Empty string = disabled — the signup email step renders with no
+   *  CAPTCHA widget, no api.js request is ever made, and the Worker skips
+   *  siteverify entirely (its TURNSTILE_SECRET is independently optional).
+   *  Set via VITE_TURNSTILE_SITE_KEY to enable. */
+  turnstileSiteKey: string;
 };
 
 /** A loosely-typed env bag: plain object in tests, `import.meta.env` at build time. */
@@ -269,6 +275,7 @@ export function buildConfig(env: EnvLike): SiteConfig {
     pricing: readJson<Pricing>(env, 'VITE_PRICING_JSON', DEFAULT_PRICING),
     showSampleSocialProof: readBoolean(env, 'VITE_SHOW_SAMPLE_SOCIAL_PROOF', false),
     testimonials: readJson<Testimonial[]>(env, 'VITE_TESTIMONIALS_JSON', []),
+    turnstileSiteKey: readString(env, 'VITE_TURNSTILE_SITE_KEY', ''),
   };
 }
 

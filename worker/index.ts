@@ -28,10 +28,115 @@ const VERIFY_LIMIT = 30;
 
 const FRIENDLY_UNAVAILABLE = 'The signup service is temporarily unavailable. Please try again shortly.';
 const FRIENDLY_RATE_LIMITED = 'Too many requests. Please try again in a few minutes.';
+const FRIENDLY_TURNSTILE_FAILED = "We couldn't verify you're human. Please try again.";
+const FRIENDLY_DISPOSABLE_EMAIL = 'Please use a permanent email address.';
 const MAX_EMAIL_LENGTH = 254;
+const MAX_TURNSTILE_TOKEN_LENGTH = 2048;
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+// These are never legitimate paying customers, so the built-in list ALWAYS
+// applies regardless of env config — env.DISPOSABLE_EMAIL_DOMAINS only
+// extends it (or, set to 'off', disables the check entirely).
+const DEFAULT_DISPOSABLE_EMAIL_DOMAINS = [
+  'mailinator.com',
+  'guerrillamail.com',
+  '10minutemail.com',
+  'tempmail.com',
+  'temp-mail.org',
+  'yopmail.com',
+  'sharklasers.com',
+  'getnada.com',
+  'trashmail.com',
+  'discard.email',
+];
+
+const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com']);
 
 function clientIp(c: Context<{ Bindings: Env }>): string {
   return c.req.header('CF-Connecting-IP') || 'unknown';
+}
+
+/**
+ * Resolves the effective disposable-domain blocklist for a request. The
+ * built-in list always applies — `raw` (env.DISPOSABLE_EMAIL_DOMAINS) only
+ * EXTENDS it with extra comma-separated domains, unless `raw` is exactly
+ * 'off' (case-insensitive), which disables the check entirely (including the
+ * built-in list). Returns null when the check is disabled.
+ */
+function resolveDisposableDomains(raw: string | undefined): Set<string> | null {
+  if (raw !== undefined && raw.trim().toLowerCase() === 'off') return null;
+  const extra = raw
+    ? raw
+        .split(',')
+        .map((d) => d.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  return new Set([...DEFAULT_DISPOSABLE_EMAIL_DOMAINS, ...extra]);
+}
+
+function emailDomain(email: string): string {
+  const at = email.lastIndexOf('@');
+  return at === -1 ? '' : email.slice(at + 1).toLowerCase();
+}
+
+/**
+ * Canonicalizes an email for BOTH the onboard `email` field and
+ * `idempotencyKey`: lowercase, strip a single `+suffix` from the local part,
+ * and — for gmail.com/googlemail.com only — also strip dots from the local
+ * part (Gmail treats `user.name` and `username` as the same inbox and
+ * ignores everything after `+`).
+ *
+ * Sending the fully canonical form as `email` itself (not just using it for
+ * idempotencyKey) is deliberate: the platform's own onboard idempotency is
+ * an exact-match on (partnerId, email), so a canonical idempotencyKey alone
+ * would NOT dedupe `user+1@gmail.com` vs `user+2@gmail.com` — only sending
+ * the canonical email does. The welcome email still reaches the same inbox
+ * either way, since that IS what canonicalization means; plus-tag inbox
+ * routing is a mailbox-side organization feature, not a delivery
+ * requirement. This also means plus-tags are stripped at signup to prevent
+ * free-credit farming via `user+1@`, `user+2@`, ... variants of one inbox.
+ */
+function canonicalizeEmail(email: string): string {
+  const trimmedLower = email.trim().toLowerCase();
+  const at = trimmedLower.lastIndexOf('@');
+  if (at === -1) return trimmedLower;
+  let local = trimmedLower.slice(0, at);
+  const domain = trimmedLower.slice(at + 1);
+  const plusIndex = local.indexOf('+');
+  if (plusIndex !== -1) local = local.slice(0, plusIndex);
+  if (GMAIL_DOMAINS.has(domain)) local = local.replace(/\./g, '');
+  return `${local}@${domain}`;
+}
+
+/**
+ * Verifies a Turnstile token via the canonical siteverify endpoint. Returns
+ * false (never throws) on any transport failure, non-2xx response, or
+ * `success !== true` — callers always treat that as "not verified" and
+ * respond 403. Never logs `secret` or `token`.
+ */
+async function verifyTurnstile(secret: string, token: string, remoteip: string): Promise<boolean> {
+  const body = new URLSearchParams({ secret, response: token });
+  if (remoteip && remoteip !== 'unknown') body.set('remoteip', remoteip);
+
+  let res: Response;
+  try {
+    res = await fetch(TURNSTILE_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+  } catch (err) {
+    console.error('signup: turnstile siteverify request failed', err);
+    return false;
+  }
+
+  if (!res.ok) {
+    console.error('signup: turnstile siteverify returned', res.status);
+    return false;
+  }
+
+  const data = (await res.json().catch(() => null)) as { success?: unknown } | null;
+  return data?.success === true;
 }
 
 /** Reads and discards the partner error body so it never reaches the client; logs it. */
@@ -80,12 +185,43 @@ app.post('/api/signup', async (c) => {
   }
 
   const env = c.env;
+
+  const disposableDomains = resolveDisposableDomains(env.DISPOSABLE_EMAIL_DOMAINS);
+  if (disposableDomains && disposableDomains.has(emailDomain(email))) {
+    return c.json({ error: FRIENDLY_DISPOSABLE_EMAIL }, 400);
+  }
+
+  // Turnstile gate — entirely OPTIONAL, gated on the secret being configured
+  // at all so the open-source template still works with zero config. Never
+  // logs the secret or the token.
+  if (env.TURNSTILE_SECRET) {
+    const turnstileToken =
+      raw && typeof raw === 'object' && 'turnstileToken' in raw
+        ? (raw as Record<string, unknown>).turnstileToken
+        : undefined;
+    if (
+      typeof turnstileToken !== 'string' ||
+      turnstileToken.length === 0 ||
+      turnstileToken.length > MAX_TURNSTILE_TOKEN_LENGTH
+    ) {
+      return c.json({ error: FRIENDLY_TURNSTILE_FAILED }, 403);
+    }
+    const verified = await verifyTurnstile(env.TURNSTILE_SECRET, turnstileToken, ip);
+    if (!verified) {
+      return c.json({ error: FRIENDLY_TURNSTILE_FAILED }, 403);
+    }
+  }
+
+  // Canonical form used for BOTH the onboard email and idempotencyKey — see
+  // canonicalizeEmail() above. The Turnstile token above is intentionally
+  // NOT included in this payload; it's a bot check, not partner-API data.
+  const canonicalEmail = canonicalizeEmail(email);
   const onboardFeatures = parseOnboardFeatures(env.ONBOARD_FEATURES_JSON);
   const payload: Record<string, unknown> = {
-    email,
+    email: canonicalEmail,
     experienceType: env.EXPERIENCE_TYPE,
     initialAiCredits: Number(env.FREE_CREDITS),
-    idempotencyKey: email,
+    idempotencyKey: canonicalEmail,
     sendWelcomeEmail: true,
     ...(env.FREE_PLAN_ID ? { planId: env.FREE_PLAN_ID } : {}),
     ...(onboardFeatures ? { features: onboardFeatures } : {}),

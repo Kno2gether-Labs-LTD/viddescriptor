@@ -57,11 +57,17 @@ async function parseJsonOrThrow<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-export async function signup(email: string): Promise<SignupResponse> {
+/**
+ * `turnstileToken` is included in the request body only when provided —
+ * callers on a deployment with Turnstile disabled (`siteConfig.turnstileSiteKey`
+ * unset) never pass one, keeping the body byte-for-byte identical to the
+ * pre-Turnstile shape.
+ */
+export async function signup(email: string, turnstileToken?: string): Promise<SignupResponse> {
   const res = await fetch('/api/signup', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(turnstileToken ? { email, turnstileToken } : { email }),
   });
   return parseJsonOrThrow<SignupResponse>(res);
 }

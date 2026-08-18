@@ -51,6 +51,14 @@ This app talks to your Knotie partner account, not ours. Before the signup/check
 
 If any of these are missing, the Worker degrades gracefully — signup/checkout return a friendly "temporarily unavailable" error rather than leaking partner API details, and the failure is logged server-side for you to diagnose.
 
+## Bot protection
+
+Signup carries three independent, entirely optional layers of abuse hardening — the app runs fine with all of them off (the open-source default):
+
+1. **Cloudflare Turnstile** — create a widget (managed mode) at [dash.cloudflare.com → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile), then set `VITE_TURNSTILE_SITE_KEY` in `.env` and `npx wrangler secret put TURNSTILE_SECRET`. Unset either one and the CAPTCHA is off — no widget renders, no `api.js` request fires, and the Worker never calls siteverify.
+2. **Email canonicalization** — at signup, plus-tags are stripped (`user+1@gmail.com` → `user@gmail.com`) and, for gmail.com/googlemail.com only, dots are stripped too, to prevent free-credit farming via inbox-alias variants of one address. The welcome email still reaches the same inbox — that's what canonicalization means.
+3. **Disposable-email blocklist** — a small built-in list (mailinator.com, guerrillamail.com, etc.) is always rejected; set `DISPOSABLE_EMAIL_DOMAINS` (comma-separated) to extend it, or to the literal string `off` to disable the check entirely.
+
 ## Local development
 
 ```bash
@@ -132,6 +140,7 @@ Everything is `.env`-driven. Public `VITE_*` vars are build-time only — they g
 | `VITE_PRICING_JSON` | *(bundled pricing cards)* | Optional JSON blob that fully replaces the default pay-as-you-go + plan cards: `{"payg":[{"kicker","price","per?","lines":[...],"cta","featured?"}],"plans":[...]}`; invalid JSON is ignored and the default is used instead |
 | `VITE_SHOW_SAMPLE_SOCIAL_PROOF` | `false` | Gates the FreeFilm/OpenSource stat blocks — enable only with real, owner-supplied numbers |
 | `VITE_TESTIMONIALS_JSON` | `[]` | JSON array of real, owner-supplied Compare-section testimonial quotes, e.g. `[{"quote":"...","attribution":"A REAL CUSTOMER"}]`; the testimonial cards render only when this is non-empty — never fabricated |
+| `VITE_TURNSTILE_SITE_KEY` | *(unset — disabled)* | Public Cloudflare Turnstile sitekey; see "Bot protection" above. Unset = no widget, no `api.js` request |
 
 ### Worker vars (non-secret, `wrangler.jsonc` → `vars`)
 
@@ -158,6 +167,9 @@ To change the deployed domain, edit the `routes` block in `wrangler.jsonc`:
 |---|---|
 | `PARTNER_API_KEY` | `pkt_…` key with `customers:write`, `payments:write`, `payments:read` scopes — the only credential that authenticates the Worker to your partner account |
 | `FREE_PLAN_ID` | Optional: plan id applied at onboarding, if you want signups to land on a specific plan rather than the platform default |
+| `TURNSTILE_SECRET` | Optional: Cloudflare Turnstile secret key; see "Bot protection" above. Unset = the `/api/signup` Turnstile check is skipped entirely |
+
+Non-secret but not in `wrangler.jsonc`'s `vars` block either (both default to "off"/unset behavior, so nothing to set unless you want to customize): `DISPOSABLE_EMAIL_DOMAINS` — comma-separated domains that EXTEND the built-in disposable-email blocklist, or the literal string `off` to disable the check entirely (including the built-in list). Set with `wrangler deploy --var DISPOSABLE_EMAIL_DOMAINS:...` or add it to `wrangler.jsonc`'s `vars`.
 
 ## Media
 

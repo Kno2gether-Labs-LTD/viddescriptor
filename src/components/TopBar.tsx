@@ -99,6 +99,19 @@ export function TopBar({ onOpenFlow }: TopBarProps): ReactElement {
           ))}
         </nav>
         <div style={{ flex: 1 }} />
+        <a
+          href={`${siteConfig.portalUrl}/login`}
+          style={{
+            padding: '11px 18px',
+            borderRadius: 999,
+            border: '1px solid rgba(255,255,255,.18)',
+            color: 'rgba(245,243,238,.85)',
+            font: "600 13.5px/1 var(--font-body)",
+            textDecoration: 'none',
+          }}
+        >
+          Log in
+        </a>
         <button
           type="button"
           onClick={onOpenFlow}

@@ -189,3 +189,16 @@ describe('landing page sections', () => {
     expect(after).not.toBe(before);
   });
 });
+
+
+describe('TopBar login link', () => {
+  it('renders a Log in link pointing at {portalUrl}/login', async () => {
+    const { siteConfig } = await import('../../src/config');
+    const { render, screen } = await import('@testing-library/react');
+    const React = (await import('react')).default;
+    const { TopBar } = await import('../../src/components/TopBar');
+    render(React.createElement(TopBar, { onOpenFlow: () => {} }));
+    const link = screen.getByRole('link', { name: /log in/i });
+    expect(link).toHaveAttribute('href', `${siteConfig.portalUrl}/login`);
+  });
+});

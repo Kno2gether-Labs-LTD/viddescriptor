@@ -422,3 +422,189 @@ describe('ONBOARD_FEATURES_JSON', () => {
     expect((seen[0] as { features: unknown }).features).toEqual({ showMediaStudio: true });
   });
 });
+
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+function postSignup(body: Record<string, unknown>, env: Env, ip: string) {
+  return app.request(
+    '/api/signup',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'CF-Connecting-IP': ip },
+      body: JSON.stringify(body),
+    },
+    env,
+  );
+}
+
+describe('Turnstile gate on /api/signup', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('secret unset: skips siteverify entirely (current behavior)', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).not.toBe(TURNSTILE_VERIFY_URL);
+      return new Response(JSON.stringify({ customerId: 'cust_no_ts' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup({ email: 'user@example.com' }, makeEnv(), 'ip-ts-unset');
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('secret set + missing turnstileToken: 403 without ever calling the partner API', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup(
+      { email: 'user@example.com' },
+      makeEnv({ TURNSTILE_SECRET: 'ts_secret' }),
+      'ip-ts-missing-token',
+    );
+
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe("We couldn't verify you're human. Please try again.");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('secret set + siteverify success:false: 403 without calling the partner API', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).toBe(TURNSTILE_VERIFY_URL);
+      return new Response(JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup(
+      { email: 'user@example.com', turnstileToken: 'bad-token' },
+      makeEnv({ TURNSTILE_SECRET: 'ts_secret' }),
+      'ip-ts-fail',
+    );
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('secret set + siteverify success:true: onboard proceeds and the token is NOT forwarded to the partner', async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      calls.push(url);
+      if (url === TURNSTILE_VERIFY_URL) {
+        const params = init.body as URLSearchParams;
+        expect(params.get('secret')).toBe('ts_secret');
+        expect(params.get('response')).toBe('good-token');
+        expect(params.get('remoteip')).toBe('ip-ts-ok');
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+      const body = JSON.parse(init.body as string);
+      expect(body).not.toHaveProperty('turnstileToken');
+      return new Response(JSON.stringify({ customerId: 'cust_ts_ok' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup(
+      { email: 'user@example.com', turnstileToken: 'good-token' },
+      makeEnv({ TURNSTILE_SECRET: 'ts_secret' }),
+      'ip-ts-ok',
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ customerId: 'cust_ts_ok' });
+    expect(calls).toEqual([TURNSTILE_VERIFY_URL, 'https://partner.example.com/api/partner/customers/onboard']);
+  });
+});
+
+describe('Email canonicalization at signup', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('gmail: strips +tag AND dots, lowercases, for both email and idempotencyKey', async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      expect(body.email).toBe('user@gmail.com');
+      expect(body.idempotencyKey).toBe('user@gmail.com');
+      return new Response(JSON.stringify({ customerId: 'cust_gmail' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup({ email: 'User+promo@GMAIL.com' }, makeEnv(), 'ip-canon-gmail');
+    expect(res.status).toBe(200);
+  });
+
+  it('non-gmail: strips +tag but keeps dots', async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      expect(body.email).toBe('a.b@company.com');
+      expect(body.idempotencyKey).toBe('a.b@company.com');
+      return new Response(JSON.stringify({ customerId: 'cust_nongmail' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup({ email: 'a.b+x@company.com' }, makeEnv(), 'ip-canon-nongmail');
+    expect(res.status).toBe(200);
+  });
+
+  it('googlemail.com is treated the same as gmail.com', async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      expect(body.email).toBe('janedoe@googlemail.com');
+      return new Response(JSON.stringify({ customerId: 'cust_googlemail' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup({ email: 'Jane.Doe+x@GoogleMail.com' }, makeEnv(), 'ip-canon-googlemail');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('Disposable-domain blocklist at signup', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects a built-in disposable domain with 400, no partner call', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup({ email: 'someone@mailinator.com' }, makeEnv(), 'ip-disp-builtin');
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe('Please use a permanent email address.');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("DISPOSABLE_EMAIL_DOMAINS='off' disables the check entirely, including the built-in list", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ customerId: 'cust_off' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await postSignup(
+      { email: 'someone@mailinator.com' },
+      makeEnv({ DISPOSABLE_EMAIL_DOMAINS: 'off' }),
+      'ip-disp-off',
+    );
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('DISPOSABLE_EMAIL_DOMAINS extends the built-in list rather than replacing it', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const env = makeEnv({ DISPOSABLE_EMAIL_DOMAINS: 'blocked.example.com' });
+
+    const extra = await postSignup({ email: 'someone@blocked.example.com' }, env, 'ip-disp-extend-1');
+    expect(extra.status).toBe(400);
+
+    const builtin = await postSignup({ email: 'someone@mailinator.com' }, env, 'ip-disp-extend-2');
+    expect(builtin.status).toBe(400);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

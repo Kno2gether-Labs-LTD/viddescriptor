@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, cleanup, screen, act } from '@testing-library/react';
+import { render, cleanup, screen, act, within } from '@testing-library/react';
 import { Hero } from '../../src/components/Hero';
 
 function stubMatchMedia(matches: boolean) {
@@ -123,6 +123,52 @@ describe('Hero — premium entrance staging', () => {
     const statsHeading = screen.getByText('FREE CREDITS ON SIGNUP').closest('div')!.parentElement!;
     expect(statsHeading.className).toContain('hc-rise');
     expect(statsHeading.style.animationDelay).toBe('300ms');
+  });
+});
+
+describe('Hero — Generate opens the signup flow directly (no fake demo animation)', () => {
+  beforeEach(() => stubMatchMedia(false));
+
+  it('clicking "Generate free →" calls onOpenFlow', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    const onOpenFlow = vi.fn();
+    render(<Hero onOpenFlow={onOpenFlow} />);
+
+    await user.click(screen.getByRole('button', { name: /generate free/i }));
+    expect(onOpenFlow).toHaveBeenCalledTimes(1);
+  });
+
+  it('pressing Enter in the prompt input calls onOpenFlow', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    const onOpenFlow = vi.fn();
+    render(<Hero onOpenFlow={onOpenFlow} />);
+
+    const input = screen.getByLabelText('Prompt');
+    await user.click(input);
+    await user.keyboard('{Enter}');
+    expect(onOpenFlow).toHaveBeenCalledTimes(1);
+  });
+
+  it('clicking a suggestion chip fills the input with its text and does NOT open the flow', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    const onOpenFlow = vi.fn();
+    render(<Hero onOpenFlow={onOpenFlow} />);
+
+    const chipText = "crash zoom into a lion's eye";
+    await user.click(screen.getByRole('button', { name: chipText }));
+
+    const input = screen.getByLabelText('Prompt') as HTMLInputElement;
+    expect(input.value).toBe(chipText);
+    expect(onOpenFlow).not.toHaveBeenCalled();
+  });
+
+  it('does not render the standalone "Start free" button that used to sit below the stats row', () => {
+    const { container } = render(<Hero onOpenFlow={() => {}} />);
+    expect(screen.queryByRole('button', { name: /start free/i })).not.toBeInTheDocument();
+    expect(within(container).queryAllByText(/start free/i)).toHaveLength(0);
   });
 });
 

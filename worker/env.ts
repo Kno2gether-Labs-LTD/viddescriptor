@@ -24,4 +24,19 @@ export type Env = {
   UPSELL_CURRENCY: string;
   UPSELL_CREDITS: string;
   SITE_URL: string;
+  /**
+   * Cloudflare Turnstile secret key (`wrangler secret put TURNSTILE_SECRET`).
+   * Entirely OPTIONAL — when unset, the /api/signup Turnstile gate is skipped
+   * outright so the open-source template still works with zero config. See
+   * worker/index.ts for the siteverify call this gates.
+   */
+  TURNSTILE_SECRET?: string;
+  /**
+   * Comma-separated list of additional disposable-email domains to reject at
+   * signup, EXTENDING the built-in blocklist (see
+   * DEFAULT_DISPOSABLE_EMAIL_DOMAINS in worker/index.ts). Set to the literal
+   * string 'off' to disable the disposable-domain check entirely, including
+   * the built-in list. Default (unset): built-in list only.
+   */
+  DISPOSABLE_EMAIL_DOMAINS?: string;
 };

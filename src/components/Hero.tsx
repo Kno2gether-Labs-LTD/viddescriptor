@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { siteConfig } from '../config';
 import { MEDIA, type SlotId } from '../lib/media';
 import { RECIPE_CHIPS } from '../data/recipes';
@@ -74,17 +74,6 @@ function riseProps(ready: boolean, reducedMotion: boolean, delayMs: number): { c
   return { className: 'hc-rise', style: { animationDelay: `${delayMs}ms` } };
 }
 
-const DEMO_STEPS: [number, string][] = [
-  [8, 'queued · position 1 of 1'],
-  [26, 'interpreting prompt · shot list built'],
-  [48, 'rendering frames 0–120'],
-  [71, 'rendering frames 120–240'],
-  [89, 'upscaling to 1080p'],
-  [100, 'done — sign up free to download it'],
-];
-const DEMO_STEP_MS = 620;
-const DEMO_IDLE_STATUS = `idle · your first ${siteConfig.freeCredits} credits are free`;
-
 const QUICK_PICKS = [
   "crash zoom into a lion's eye",
   'my product on a spinning pedestal',
@@ -99,9 +88,10 @@ const WALL_COLUMNS: { slots: [SlotId, SlotId]; animClass: string; ratio: string 
 ];
 
 /**
- * Full-bleed hero: video wall background, typing headline, interactive
- * prompt demo box (client-side simulation only — no real render happens),
- * and a truthful, config-driven stats row.
+ * Full-bleed hero: video wall background, typing headline, a prompt box
+ * whose Generate button (and Enter in the input) opens the signup flow
+ * directly — no fake generation is simulated — and a truthful,
+ * config-driven stats row.
  */
 export function Hero({ onOpenFlow }: HeroProps): ReactElement {
   const reducedMotion = usePrefersReducedMotion();
@@ -116,9 +106,6 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
   const [caretOn, setCaretOn] = useState(!reducedMotion);
 
   const [prompt, setPrompt] = useState('drone shot over neon Tokyo rooftop, rain, anamorphic flare');
-  const [progress, setProgress] = useState(0);
-  const [demoStatus, setDemoStatus] = useState(DEMO_IDLE_STATUS);
-  const demoTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     if (reducedMotion) return;
@@ -173,26 +160,8 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
     };
   }, [reducedMotion]);
 
-  useEffect(() => () => clearInterval(demoTimerRef.current), []);
-
-  const runDemo = () => {
-    clearInterval(demoTimerRef.current);
-    let i = 0;
-    demoTimerRef.current = setInterval(() => {
-      if (i >= DEMO_STEPS.length) {
-        clearInterval(demoTimerRef.current);
-        return;
-      }
-      const step = DEMO_STEPS[i]!;
-      setProgress(step[0]);
-      setDemoStatus(step[1]);
-      i += 1;
-    }, DEMO_STEP_MS);
-  };
-
   const pick = (text: string) => () => {
     setPrompt(text);
-    runDemo();
   };
 
   const revealPct = Math.round((typed.length / TYPED_TARGET.length) * 100);
@@ -353,7 +322,7 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') runDemo();
+                  if (e.key === 'Enter') onOpenFlow();
                 }}
                 placeholder="drone shot over neon Tokyo rooftop, rain, anamorphic flare"
                 aria-label="Prompt"
@@ -370,7 +339,7 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
             </div>
             <button
               type="button"
-              onClick={runDemo}
+              onClick={onOpenFlow}
               style={{
                 border: 0,
                 cursor: 'pointer',
@@ -405,17 +374,6 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
               </button>
             ))}
           </div>
-          <div style={{ marginTop: 14, height: 8, borderRadius: 99, background: 'var(--color-bg)', overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg,oklch(0.7 0.23 300),oklch(0.78 0.19 85))',
-                transition: 'width .28s linear',
-              }}
-            />
-          </div>
-          <div style={{ marginTop: 9, font: "400 11.5px/1 var(--font-mono)", color: 'rgba(245,243,238,.5)' }}>{demoStatus}</div>
         </div>
 
         <div
@@ -443,25 +401,6 @@ export function Hero({ onOpenFlow }: HeroProps): ReactElement {
             <div style={{ font: "400 34px/1 var(--font-display)", color: 'var(--color-ink)' }}>0</div>
             CREDITS EXPIRED
           </div>
-        </div>
-
-        <div className={riseStats.className} style={{ marginTop: 34, ...riseStats.style }}>
-          <button
-            type="button"
-            onClick={onOpenFlow}
-            className="hc-glow-btn"
-            style={{
-              border: 0,
-              cursor: 'pointer',
-              padding: '16px 30px',
-              borderRadius: 999,
-              background: 'var(--color-accent)',
-              color: 'var(--color-bg)',
-              font: "700 15px/1 var(--font-body)",
-            }}
-          >
-            Start free →
-          </button>
         </div>
       </div>
     </div>

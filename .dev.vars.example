@@ -6,3 +6,8 @@ PARTNER_API_KEY=
 
 # Optional: override the free plan id used when onboarding new customers.
 FREE_PLAN_ID=
+
+# Optional: Cloudflare Turnstile secret key. When unset, /api/signup skips
+# the Turnstile check entirely (no siteverify call, no token required).
+# Pairs with VITE_TURNSTILE_SITE_KEY in .env.
+TURNSTILE_SECRET=
