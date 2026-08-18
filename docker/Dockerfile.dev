@@ -1,0 +1,12 @@
+# Local evaluation/dev image only — production deploys to Cloudflare Workers
+# (see the "Deploy to Cloudflare" quickstart in README.md), not this image.
+FROM node:20-slim
+
+WORKDIR /app
+
+EXPOSE 8787
+
+# Installs dependencies on first run (cached in the node_modules named volume
+# declared by docker-compose.yml on subsequent runs), then starts the full
+# app — SPA + Hono API — through Cloudflare's own workerd runtime.
+CMD ["sh", "-c", "npm install && npx wrangler dev --ip 0.0.0.0 --port 8787"]

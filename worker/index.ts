@@ -301,10 +301,10 @@ app.post('/api/checkout', async (c) => {
     successUrl: `${env.SITE_URL}/?pay=success`,
     cancelUrl: `${env.SITE_URL}/?pay=cancelled`,
     description: `Credit top-up · +${upsellCredits} credits`,
-    // Grant is read off the intent row by the (separately-extended) payment
-    // webhook — see docs/notes/upsell-grant.md. Omitted entirely at 0 rather
-    // than sent as {initialAiCredits: 0}, since the webhook's feature-apply
-    // pipeline treats presence as "grant this."
+    // Grant is applied server-side by the partner platform's payment webhook
+    // once payment is confirmed. Omitted entirely at 0 rather than sent as
+    // {initialAiCredits: 0}, since the webhook's feature-apply pipeline
+    // treats presence as "grant this."
     ...(upsellCredits > 0 ? { features: { initialAiCredits: upsellCredits } } : {}),
   };
 

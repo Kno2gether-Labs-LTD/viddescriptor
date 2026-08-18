@@ -1,0 +1,23 @@
+# Local evaluation/dev only — see README.md "Quickstart B". Production
+# belongs on Cloudflare (CDN, Turnstile at the edge, encrypted secrets); see
+# "Quickstart A" for that.
+#
+# Usage:
+#   cp .dev.vars.example .dev.vars   # fill in PARTNER_API_KEY
+#   docker compose up
+#   open http://localhost:8787
+services:
+  viddescriptor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - '8787:8787'
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    env_file:
+      - .dev.vars
+
+volumes:
+  node_modules:

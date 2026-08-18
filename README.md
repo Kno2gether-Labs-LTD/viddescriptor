@@ -1,23 +1,41 @@
 # Viddescriptor
 
-**An open-source, white-label landing page + signup funnel for selling an AI Media Studio subscription — deploy your own branded version of it in about five minutes.**
+**The open-source landing page & signup funnel for selling AI media generation under your own brand.**
 
-Type a sentence, get back a finished, film-grade video — no crew, no editing timeline. Viddescriptor is the marketing site and signup flow in front of that product: visitors land on the page, sign up for free credits, get a one-time "double your credits" upsell, and log into your white-label portal to start generating. Every dollar and every credit flows through **your** Knotie partner account and **your** Stripe Connect balance.
+Type a sentence, get back a finished, film-grade video — no crew, no editing timeline. Viddescriptor is the marketing page and signup flow that turns visitors into paying customers of your own AI media generation product: they land on a cinematic showcase, sign up for free credits, take a one-time credit upsell, and log into your own branded portal to start generating.
 
-Live reference deployment: **https://viddescriptor.kno2gether.com**
+**Live demo: https://viddescriptor.com**
 
 ![Viddescriptor](docs/screenshot.png)
 
 ---
 
-## What it is
+## What you get
 
-- A single **Cloudflare Worker** that serves a **Vite + React + TypeScript SPA** (edge-cached static assets) and hosts a small **Hono** JSON API in the same Worker.
-- The SPA is a faithful, honesty-audited port of a premium landing-page design: sticky top bar + offer banner, hero video wall, marquee, gallery, image-to-video before/after slider, a real 53-recipe catalog grid, an interactive "director controls" demo, pricing (pay-as-you-go / plans), a compare table, and a 3-step signup modal.
-- The API proxies exactly three calls to the Knotie partner platform — signup (customer onboarding), checkout (mint a Stripe payment link), and verify (poll payment status) — so your partner API key **never reaches the browser**.
-- No telemetry, no analytics beacons, no third-party trackers baked in. What you see is what ships.
+- **A cinematic landing page** — sticky top bar + offer banner, hero video wall, marquee, gallery, an image-to-video before/after slider, a real 53-recipe catalog grid, and an interactive "director controls" demo, all dressed with a real AI-generated media set that's bundled in and licensed for reuse.
+- **A working conversion funnel** — free-credits signup → one-time credit upsell via Stripe, wired end to end, not a mockup.
+- **Character-lock & film showcase sections** that sell the product's actual capabilities.
+- **Every brand element env-driven** — name, logo, hero copy, pricing, banner text, all swap through `.env`, no code edits required.
+- **Bot-proof signup out of the box** — Cloudflare Turnstile, email canonicalization, and a disposable-domain blocklist, all optional and all off by default.
+- **238 tests** covering the Worker API, components, and config, so a fork stays safe to customize.
 
-## Quickstart (5 minutes)
+> ### 🎓 Want to turn this into a business?
+> Join the **AI Reseller Club** to learn how to white-label this exact stack, price and sell AI media generation for profit, and deploy it safely to maximize every signup.
+>
+> [![Join the AI Reseller Club on Skool](https://img.shields.io/badge/AI_Reseller_Club-Join_on_Skool-f0b429?style=for-the-badge)](https://www.skool.com/voice-ai-mastery-5847)
+
+## How it works
+
+1. Your visitor lands on the page and signs up.
+2. A customer account is provisioned — free credits and all — on your white-label media studio, powered by [Knotie](https://knotie-ai.pro).
+3. They can optionally buy a paid credit top-up through your own Stripe account.
+4. They log into **your** branded portal and start generating.
+
+Every dollar and every credit flows through your own partner account and your own Stripe balance — Viddescriptor is just the front door.
+
+## Quickstart A — Deploy to Cloudflare (recommended)
+
+Recommended because production belongs on the edge: a global CDN for the bundled media, Turnstile bot protection running right at the edge, secrets that are encrypted and never bundled into your JS, your own custom domain, and it all fits comfortably inside Cloudflare's free tier.
 
 ```bash
 git clone https://github.com/Kno2gether-Labs-LTD/viddescriptor.git
@@ -36,18 +54,33 @@ Then, in order:
 
 Everything else (brand name, tagline, pricing copy, credit amounts) ships with sane Viddescriptor defaults baked into `src/config.ts`, so nothing above is strictly required beyond the partner API key.
 
-Before you go live, work through the **Knotie partner checklist** below — the app will deploy without it, but signup and checkout will fail against a partner account that isn't fully wired up.
+Before you go live, work through the **Partner checklist** below — the app will deploy without it, but signup and checkout will fail against a partner account that isn't fully wired up.
 
-## Knotie partner checklist
+## Quickstart B — Run locally with Docker
 
-This app talks to your Knotie partner account, not ours. Before the signup/checkout flow can work end to end:
+For evaluation or local development without a Cloudflare account:
 
-1. **Have a partner account with Stripe Connect connected.** Payment links mint against your Connect balance — the platform's payment-links API needs a connected Stripe account on file for your partner.
-2. **Mint a partner API key with `customers:write`, `payments:write`, and `payments:read` scopes.** This is the key you'll `wrangler secret put PARTNER_API_KEY` below — it's the only credential the Worker holds, and the SPA never sees it.
+```bash
+cp .dev.vars.example .dev.vars   # fill in PARTNER_API_KEY for local calls to the partner API
+docker compose up
+```
+
+Open **http://localhost:8787** — the full app (SPA + API) running locally, served by Cloudflare's own `workerd` runtime, the same code path as production.
+
+This is for evaluation and local development only. Production belongs on Cloudflare — see Quickstart A for the CDN, Turnstile, and encrypted-secrets benefits Docker can't give you locally.
+
+**🎓 Ready to make it a business? → [Join the AI Reseller Club](https://www.skool.com/voice-ai-mastery-5847)**
+
+## Partner checklist
+
+This app talks to your own white-label partner account, not ours. Before the signup/checkout flow can work end to end:
+
+1. **Create a Knotie white-label partner account with Stripe Connect connected.** Payment links mint against your Connect balance — the platform's payment-links API needs a connected Stripe account on file for your partner.
+2. **Mint a partner API key with `customers:write`, `payments:write`, and `payments:read` scopes.** This is the key you'll `wrangler secret put PARTNER_API_KEY` in Quickstart A — it's the only credential the Worker holds, and the SPA never sees it.
 3. **Register your landing domain in Settings → approved redirect domains.** The checkout flow builds `successUrl`/`cancelUrl` from `SITE_URL`, and they must be `https://` URLs on a domain you've approved — an unapproved domain will fail to mint a payment link.
-4. **Enable the `media_studio` experience and have a white-label portal subdomain ready.** Set `VITE_PORTAL_URL` to it — the post-signup "log in" CTA links to `{VITE_PORTAL_URL}/login`.
-5. **Set the Worker secret:** `npx wrangler secret put PARTNER_API_KEY` (production) or add it to `.dev.vars` (local dev — see below).
-6. **Confirm your platform's payment-link webhook grants credits before enabling the upsell.** If it doesn't yet grant `features.initialAiCredits` on payment (see `docs/notes/upsell-grant.md`), set `VITE_UPSELL_CREDITS=0` in your `.env` — that's the only change needed to disable the upsell, and it skips the "double my credits" step entirely. Once your platform has the grant webhook deployed (knotie media_studio_v5+), set `VITE_UPSELL_AMOUNT_CENTS`, `VITE_UPSELL_CURRENCY`, and `VITE_UPSELL_CREDITS` in `.env` to your real offer (e.g. `900`/`usd`/`500` for "$9 → +500 credits") and redeploy with `npm run deploy` (or `deploy:prod`) — `scripts/deploy.sh` forwards them to the Worker automatically, so `wrangler.jsonc` never needs hand-editing for this.
+4. **Enable the Media Studio experience and grab your white-label portal subdomain.** Set `VITE_PORTAL_URL` to it — the post-signup "log in" CTA links to `{VITE_PORTAL_URL}/login`.
+
+The credit-grant webhook that powers the upsell is already live on the platform, so once your partner account is wired up the upsell just works. Don't want it? Set `VITE_UPSELL_CREDITS=0` in your `.env` — that's the only change needed to disable it, and it skips the "double my credits" step entirely.
 
 If any of these are missing, the Worker degrades gracefully — signup/checkout return a friendly "temporarily unavailable" error rather than leaking partner API details, and the failure is logged server-side for you to diagnose.
 
@@ -59,7 +92,7 @@ Signup carries three independent, entirely optional layers of abuse hardening �
 2. **Email canonicalization** — at signup, plus-tags are stripped (`user+1@gmail.com` → `user@gmail.com`) and, for gmail.com/googlemail.com only, dots are stripped too, to prevent free-credit farming via inbox-alias variants of one address. The welcome email still reaches the same inbox — that's what canonicalization means.
 3. **Disposable-email blocklist** — a small built-in list (mailinator.com, guerrillamail.com, etc.) is always rejected; set `DISPOSABLE_EMAIL_DOMAINS` (comma-separated) to extend it, or to the literal string `off` to disable the check entirely.
 
-## Local development
+## Local development (without Docker)
 
 ```bash
 cp .dev.vars.example .dev.vars   # fill in PARTNER_API_KEY for local calls to the partner API
@@ -73,7 +106,7 @@ npm run dev                      # SPA only (vite dev), faster iteration, /api/*
 ## Testing
 
 ```bash
-npx vitest run     # 142 tests: worker endpoints (mocked partner API) + component + unit
+npx vitest run     # 238 tests: worker endpoints (mocked partner API) + component + unit
 npx vitest          # watch mode
 npm run typecheck   # tsc --noEmit
 ```
@@ -90,17 +123,17 @@ Worker tests mock the partner API entirely (Nock-style fetch mocking) — no tes
                          │  React SPA: Hero, Recipes, Pricing, ...  │
                          │                                           │
   Browser  ── POST ────▶ │  Hono API (worker/index.ts)              │
-           /api/signup   │    ├─ /api/signup   → partner /onboard   │──▶  Knotie Partner
-           /api/checkout │    ├─ /api/checkout → partner /payment-  │     Platform API
+           /api/signup   │    ├─ /api/signup   → partner /onboard   │──▶  White-label
+           /api/checkout │    ├─ /api/checkout → partner /payment-  │     platform API
            /api/verify   │    │                    links (mint)     │     (your account,
                          │    └─ /api/verify   → partner /payment-  │      your Stripe
                          │                          links/{id} (GET)│      Connect balance)
                          │                                           │
                          │  PARTNER_API_KEY (Worker secret, never    │
                          │  bundled into client JS, never sent to    │
-                         │  the browser) sent as x-api-key (direct)  │
-                         │  or Authorization: Bearer (gateway) —     │
-                         │  see PARTNER_API_STYLE                    │
+                         │  the browser) sent server-side — two      │
+                         │  transports are supported, see            │
+                         │  PARTNER_API_STYLE below                  │
                          │                                           │
                          │  Per-IP fixed-window rate limiter         │
                          │  (in-memory, per isolate) on all 3 routes │
@@ -128,6 +161,7 @@ Everything is `.env`-driven. Public `VITE_*` vars are build-time only — they g
 | `VITE_SUPPORT_EMAIL` | `support@kno2gether.com` | Footer + error-state contact address |
 | `VITE_PORTAL_URL` | `https://viddescriptor.kno2gether.com` | White-label portal base URL; the post-signup "log in" CTA links to `{VITE_PORTAL_URL}/login` — **set this before going live** |
 | `VITE_GITHUB_URL` | `https://github.com/Kno2gether-Labs-LTD/viddescriptor` | Open-source backlink; point at your own fork |
+| `VITE_RESELLER_CLUB_URL` | `https://www.skool.com/voice-ai-mastery-5847` | Secondary "learn to sell this" link under the GitHub button; set to an empty string to hide it |
 | `VITE_SOCIALS_JSON` | `[]` | JSON array of extra footer social links, e.g. `[{"label":"X","href":"https://x.com/you"}]` |
 | `VITE_FREE_CREDITS` | `300` | Free credits granted on signup — shown in copy *and* sent as the onboarding grant amount; keep equal to the Worker's `FREE_CREDITS` |
 | `VITE_UPSELL_AMOUNT_CENTS` | `900` | Upsell price in integer cents (e.g. `900` = $9.00, `950` = €9.50) — **single source**, also forwarded to the Worker's `UPSELL_AMOUNT_CENTS` by `scripts/deploy.sh` |
@@ -146,8 +180,8 @@ Everything is `.env`-driven. Public `VITE_*` vars are build-time only — they g
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PARTNER_API_BASE` | `https://mcp.knotie-ai.pro` | Base URL of the Knotie partner platform transport (gateway by default) |
-| `PARTNER_API_STYLE` | `gateway` (also the default when unset) | Which transport calls the partner platform with the same `pkt_…` key: `gateway` hits the MCP gateway's `/api/partner-rest/tools/<tool>` routes with `Authorization: Bearer <key>`; `direct` hits the app's `/api/partner/...` routes with `x-api-key: <key>`. To use direct, set this to `direct` **and** `PARTNER_API_BASE` to `https://app.knotie-ai.pro` |
+| `PARTNER_API_BASE` | `https://app.knotie-ai.pro` | Base URL of the partner platform transport |
+| `PARTNER_API_STYLE` | `direct` (the default) | Two transports are supported to call the partner platform with the same `pkt_…` key: `direct` (default) hits the app's `/api/partner/...` routes with `x-api-key: <key>`; `gateway` hits the MCP gateway's `/api/partner-rest/tools/<tool>` routes with `Authorization: Bearer <key>`. To use gateway, set this to `gateway` **and** `PARTNER_API_BASE` to `https://mcp.knotie-ai.pro` |
 | `EXPERIENCE_TYPE` | `media_studio` | Experience passed on customer onboarding |
 | `FREE_CREDITS` | `300` — **fallback only; `.env`'s `VITE_FREE_CREDITS` is the single source**, forwarded here by `scripts/deploy.sh` | Credits granted on signup (server-side truth) |
 | `UPSELL_AMOUNT_CENTS` | `900` — **fallback only; `.env`'s `VITE_UPSELL_AMOUNT_CENTS` is the single source** | Upsell price in cents, sent to the payment-link mint call |
@@ -202,3 +236,7 @@ wrangler creates the records itself (error 100117 otherwise).
 ## License
 
 Code is [MIT licensed](LICENSE) — copyright 2026 Kno2gether / Knolabs. Bundled media is licensed separately under [`LICENSE-MEDIA.md`](LICENSE-MEDIA.md).
+
+---
+
+**🎓 Want to build a business on this?** → [Join the AI Reseller Club](https://www.skool.com/voice-ai-mastery-5847)

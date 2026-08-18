@@ -18,17 +18,17 @@
   // change these when you want the fallback itself to differ (e.g. this repo
   // has no `.env`, or a var is deliberately left unset in it).
   "vars": {
-    // Gateway (mcp.knotie-ai.pro, PARTNER_API_STYLE=gateway) is the documented production surface;
-    // switched to direct on 2026-08-18 because the gateway origin returned 502 on tool calls. Flip back once healthy.
+    // Two transports are supported to reach the partner platform; `direct` is
+    // the default. See the PARTNER_API_STYLE comment above.
     "PARTNER_API_BASE": "https://app.knotie-ai.pro",
     "PARTNER_API_STYLE": "direct",
     "EXPERIENCE_TYPE": "MEDIA_STUDIO",
     "FREE_CREDITS": "300",
     "UPSELL_AMOUNT_CENTS": "900",
     "UPSELL_CURRENCY": "usd",
-    // Sane open-source default now that the platform payment-link credit grant
-    // (knotie media_studio_v5+) is live — override in your own `.env` via
-    // VITE_UPSELL_CREDITS.
+    // Sane open-source default — the platform's payment-link credit grant is
+    // live, so this just works once your partner account is wired up.
+    // Override in your own `.env` via VITE_UPSELL_CREDITS.
     "UPSELL_CREDITS": "500",
     "SITE_URL": "https://viddescriptor.kno2gether.com"
   },

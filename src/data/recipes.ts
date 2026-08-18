@@ -1,7 +1,6 @@
 /**
- * The real 53-recipe Media Studio catalog, extracted from the Media Studio
- * recipe catalog on knotie-ai-pro's `src/lib/media-generation/recipes/
- * recipeCatalog.ts` (branch media_studio_v5).
+ * The real 53-recipe Media Studio catalog, mirrored from the platform's
+ * production recipe catalog.
  *
  * Every title below is a real, one-click recipe available in the product.
  * No per-recipe cost is shown anywhere this data feeds — the platform bills

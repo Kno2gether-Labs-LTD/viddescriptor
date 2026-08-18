@@ -67,6 +67,26 @@ export function OpenSource(): ReactElement {
             >
               View on GitHub →
             </a>
+            {siteConfig.resellerClubUrl ? (
+              <a
+                href={siteConfig.resellerClubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hc-link-hover"
+                data-testid="reseller-club-link"
+                style={{
+                  color: 'var(--color-good)',
+                  padding: '14px 22px',
+                  borderRadius: 999,
+                  font: "700 14px/1 var(--font-body)",
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 9,
+                }}
+              >
+                AI Reseller Club — learn to sell AI media →
+              </a>
+            ) : null}
           </div>
         </div>
         {showStats ? (

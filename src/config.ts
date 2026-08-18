@@ -53,6 +53,11 @@ export type SiteConfig = {
   supportEmail: string;
   portalUrl: string;
   githubUrl: string;
+  /** Secondary "learn to sell this" CTA link rendered under the GitHub button
+   *  in OpenSource.tsx. Empty string hides the link entirely — set via
+   *  VITE_RESELLER_CLUB_URL. Ships pointed at the AI Reseller Club by
+   *  default. */
+  resellerClubUrl: string;
   socials: SocialLink[];
   freeCredits: number;
   /** Top-bar/sticky-CTA banner line. Config-driven so a fork never ships an
@@ -100,6 +105,7 @@ const DEFAULT_SUPPORT_EMAIL = 'support@kno2gether.com';
 // Placeholder — real deployments should set VITE_PORTAL_URL to their white-label portal.
 const DEFAULT_PORTAL_URL = 'https://viddescriptor.kno2gether.com';
 const DEFAULT_GITHUB_URL = 'https://github.com/Kno2gether-Labs-LTD/viddescriptor';
+const DEFAULT_RESELLER_CLUB_URL = 'https://www.skool.com/voice-ai-mastery-5847';
 const DEFAULT_FREE_CREDITS = 300;
 // `{freeCredits}` is interpolated with the resolved freeCredits value (see
 // buildConfig) — no implied event ("launch week"), just the real offer.
@@ -200,6 +206,14 @@ function readOptionalString(env: EnvLike, key: string): string | undefined {
   return typeof raw === 'string' && raw.trim() !== '' ? raw : undefined;
 }
 
+/** Like `readString`, but an explicitly-set empty string is preserved rather
+ *  than falling back — used where "" is a meaningful "hide this" value
+ *  distinct from "unset, use the default" (e.g. VITE_RESELLER_CLUB_URL). */
+function readStringAllowEmpty(env: EnvLike, key: string, fallback: string): string {
+  const raw = env[key];
+  return typeof raw === 'string' ? raw : fallback;
+}
+
 function readNumber(env: EnvLike, key: string, fallback: number): number {
   const raw = env[key];
   if (typeof raw !== 'string' || raw.trim() === '') return fallback;
@@ -254,6 +268,7 @@ export function buildConfig(env: EnvLike): SiteConfig {
     supportEmail: readString(env, 'VITE_SUPPORT_EMAIL', DEFAULT_SUPPORT_EMAIL),
     portalUrl: readString(env, 'VITE_PORTAL_URL', DEFAULT_PORTAL_URL).replace(/\/+$/, ''),
     githubUrl: readString(env, 'VITE_GITHUB_URL', DEFAULT_GITHUB_URL),
+    resellerClubUrl: readStringAllowEmpty(env, 'VITE_RESELLER_CLUB_URL', DEFAULT_RESELLER_CLUB_URL),
     socials: readJson<SocialLink[]>(env, 'VITE_SOCIALS_JSON', []),
     freeCredits,
     bannerText: bannerTemplate.replace('{freeCredits}', String(freeCredits)),
