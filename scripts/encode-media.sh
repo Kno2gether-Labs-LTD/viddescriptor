@@ -295,6 +295,84 @@ else
   echo "warning: $OWNER_DIR not found, skipping owner batch" >&2
 fi
 
+# =========================================================================
+# --- films section: Cinema / Director agent showcase --------------------
+# =========================================================================
+# Local-only source dir, same optional-skip convention as media-src/wave2/
+# and media-src/owner/ above. Three real films (native res, no upscale —
+# these are 960x540 sources) plus four stills (storyboard, two character
+# sheets, contact sheet) for the Cinema section (src/components/Cinema.tsx).
+FILMS_DIR="$ROOT_DIR/media-src/films"
+
+FILM_CRF=24
+FILM_CRF_RETRY=26
+FILM_BUDGET_BYTES=$((6000 * 1000))
+
+if [ -d "$FILMS_DIR" ]; then
+  FILM_MAP="
+film-paper-boat:paper-boat-960.mp4
+film-lighthouse:lighthouse-960.mp4
+film-cave:yeti-960.mp4
+"
+  while IFS=: read -r stem src_name; do
+    [ -z "$stem" ] && continue
+    src="$FILMS_DIR/$src_name"
+    out="$OUT_DIR/${stem}.mp4"
+    poster="$POSTER_DIR/${stem}.jpg"
+    if [ ! -f "$src" ]; then
+      echo "error: films source '$src_name' for '$stem' not found at $src" >&2
+      exit 1
+    fi
+
+    # Native resolution — no scale filter, so no upscale/downscale happens.
+    echo "encoding $stem <- $src_name (native res, crf $FILM_CRF)..."
+    ffmpeg -y -nostdin -loglevel error -i "$src" \
+      -c:v libx264 -preset slow -crf "$FILM_CRF" \
+      -movflags +faststart -an -pix_fmt yuv420p \
+      "$out"
+
+    size=$(stat -f%z "$out" 2>/dev/null || stat -c%s "$out")
+    if [ "$size" -gt "$FILM_BUDGET_BYTES" ]; then
+      echo "  size $(human_size "$size") exceeds budget $(human_size "$FILM_BUDGET_BYTES") — retrying at crf $FILM_CRF_RETRY"
+      ffmpeg -y -nostdin -loglevel error -i "$src" \
+        -c:v libx264 -preset slow -crf "$FILM_CRF_RETRY" \
+        -movflags +faststart -an -pix_fmt yuv420p \
+        "$out"
+      size=$(stat -f%z "$out" 2>/dev/null || stat -c%s "$out")
+      if [ "$size" -gt "$FILM_BUDGET_BYTES" ]; then
+        WARNINGS+=("$stem: $(human_size "$size") still exceeds $(human_size "$FILM_BUDGET_BYTES") budget after crf $FILM_CRF_RETRY retry")
+      fi
+    fi
+
+    # Poster at 2s (films open on a title/establishing card in the first
+    # second or so — 2s reliably clears that for a representative frame).
+    ffmpeg -y -nostdin -loglevel error -ss 2 -i "$src" -frames:v 1 -q:v 4 "$poster"
+    echo "  -> $out ($(human_size "$size")), poster -> $poster"
+  done <<< "$FILM_MAP"
+
+  # Stills: portal storyboard screenshot, two character sheets, contact sheet.
+  FILM_STILL_MAP="
+film-storyboard:paper-boat-storyboard.jpg:1600:5
+film-sheet-boat:paper-boat-sheet-boat.jpg:900:5
+film-sheet-duck:paper-boat-sheet-duck.jpg:900:5
+film-contact:paper-boat-contact.jpg:1200:5
+"
+  while IFS=: read -r stem src_name maxw q; do
+    [ -z "$stem" ] && continue
+    src="$FILMS_DIR/$src_name"
+    out="$OUT_DIR/${stem}.jpg"
+    if [ ! -f "$src" ]; then
+      echo "error: films still source '$src_name' for '$stem' not found at $src" >&2
+      exit 1
+    fi
+    echo "encoding $stem.jpg (max width $maxw, q$q)..."
+    ffmpeg -y -nostdin -loglevel error -i "$src" -vf "scale='min($maxw,iw)':-2" -q:v "$q" "$out"
+    echo "  -> $out"
+  done <<< "$FILM_STILL_MAP"
+else
+  echo "warning: $FILMS_DIR not found, skipping films section" >&2
+fi
+
 echo ""
 echo "=== encode-media.sh report ==="
 total_bytes=0

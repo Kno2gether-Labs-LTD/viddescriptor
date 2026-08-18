@@ -6,6 +6,7 @@ const ITEMS = [
   'Talking presenters',
   'Character lock',
   'Storyboards',
+  'Cinema · Director agent',
   'Voice + music',
   '4K stills',
   'Every ad size',

@@ -7,6 +7,7 @@ import { Hero } from './components/Hero';
 import { Marquee } from './components/Marquee';
 import { Gallery } from './components/Gallery';
 import { CharacterLock } from './components/CharacterLock';
+import { Cinema } from './components/Cinema';
 import { ImageToVideo } from './components/ImageToVideo';
 import { Recipes } from './components/Recipes';
 import { DirectorDesk } from './components/DirectorDesk';
@@ -138,6 +139,7 @@ export default function App() {
       <Marquee />
       <Gallery />
       <CharacterLock />
+      <Cinema onOpenFlow={handleOpenFlow} />
       <ImageToVideo onOpenFlow={handleOpenFlow} />
       <Recipes onOpenFlow={handleOpenFlow} />
       <DirectorDesk onOpenFlow={handleOpenFlow} />

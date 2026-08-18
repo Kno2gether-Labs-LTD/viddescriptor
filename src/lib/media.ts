@@ -55,7 +55,18 @@ export type SlotId =
   | 'charSheet'
   | 'ownAlley'
   | 'emberCity'
-  | 'rainGlass';
+  | 'rainGlass'
+  // Cinema / Director agent showcase — three real films (encoded at native
+  // res, no upscale) plus the storyboard/character-sheet/contact-sheet
+  // stills, from media-src/films/ via scripts/encode-media.sh's films
+  // section (see Cinema.tsx).
+  | 'filmPaperBoat'
+  | 'filmLighthouse'
+  | 'filmCave'
+  | 'filmStoryboard'
+  | 'filmSheetBoat'
+  | 'filmSheetDuck'
+  | 'filmContact';
 
 export type MediaEntry = {
   src: string;
@@ -83,6 +94,13 @@ const PENDING_STEMS: Partial<Record<SlotId, string>> = {
   ownAlley: 'own-alley',
   emberCity: 'ember-city',
   rainGlass: 'rain-glass',
+  filmPaperBoat: 'film-paper-boat',
+  filmLighthouse: 'film-lighthouse',
+  filmCave: 'film-cave',
+  filmStoryboard: 'film-storyboard',
+  filmSheetBoat: 'film-sheet-boat',
+  filmSheetDuck: 'film-sheet-duck',
+  filmContact: 'film-contact',
 };
 
 /**
@@ -156,4 +174,14 @@ export const MEDIA: Record<SlotId, MediaEntry> = {
   // Gallery expander plates.
   emberCity: slot('emberCity'),
   rainGlass: slot('rainGlass'),
+  // Cinema / Director agent showcase — three real films, native res.
+  filmPaperBoat: slot('filmPaperBoat'),
+  filmLighthouse: slot('filmLighthouse'),
+  filmCave: slot('filmCave'),
+  // Cinema stills — portal storyboard screenshot, two character sheets, a
+  // contact sheet. Still images, no poster.
+  filmStoryboard: imageSlot('filmStoryboard'),
+  filmSheetBoat: imageSlot('filmSheetBoat'),
+  filmSheetDuck: imageSlot('filmSheetDuck'),
+  filmContact: imageSlot('filmContact'),
 };

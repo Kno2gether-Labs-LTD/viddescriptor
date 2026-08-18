@@ -45,6 +45,7 @@ describe('landing page sections', () => {
 
     expect(screen.getByRole('heading', { name: /made this morning/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /every recipe/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /a film/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /moving in seconds/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /zero prompt writing/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /a mixing desk/i })).toBeInTheDocument();
@@ -160,6 +161,21 @@ describe('landing page sections', () => {
     expect(galleryIdx).toBeGreaterThan(-1);
     expect(charactersIdx).toBeGreaterThan(galleryIdx);
     expect(imageToVideoHeadingIdx).toBeGreaterThan(charactersIdx);
+  });
+
+  it('top-bar nav includes a "Films" anchor link to #cinema, and the Cinema section sits between Characters and Image→Video', () => {
+    const { container } = render(<App />);
+
+    expect(screen.getByRole('link', { name: 'Films' })).toHaveAttribute('href', '#cinema');
+    expect(document.getElementById('cinema')).toBeInTheDocument();
+
+    const html = container.innerHTML;
+    const charactersIdx = html.indexOf('id="characters"');
+    const cinemaIdx = html.indexOf('id="cinema"');
+    const imageToVideoHeadingIdx = html.indexOf('in seconds');
+    expect(charactersIdx).toBeGreaterThan(-1);
+    expect(cinemaIdx).toBeGreaterThan(charactersIdx);
+    expect(imageToVideoHeadingIdx).toBeGreaterThan(cinemaIdx);
   });
 
   it('director desk sliders rewrite the shot description', () => {

@@ -9,6 +9,7 @@ export type TopBarProps = {
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: '#gallery', label: 'Gallery' },
   { href: '#characters', label: 'Characters' },
+  { href: '#cinema', label: 'Films' },
   { href: '#recipes', label: 'Recipes' },
   { href: '#pricing', label: 'Pricing' },
   { href: '#compare', label: 'Compare' },
