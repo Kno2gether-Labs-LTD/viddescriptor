@@ -1,0 +1,21 @@
+/* Viddescriptor brand tokens — drop into any site/marketing page */
+:root {
+  --vd-bg: #0a0a09;          /* page background (near-black, warm) */
+  --vd-bg-raised: #0d0d0b;   /* panels, cards */
+  --vd-bg-card: #0e0e0c;     /* pricing cards, modals */
+  --vd-ink: #f5f3ee;         /* primary text (warm off-white) */
+  --vd-ink-70: rgba(245,243,238,.70);
+  --vd-ink-45: rgba(245,243,238,.45);
+  --vd-line: rgba(255,255,255,.10);
+  --vd-accent: oklch(0.78 0.19 85);      /* signature amber — CTAs, accent words */
+  --vd-accent-hex: #f0b429;              /* sRGB fallback for the amber */
+  --vd-accent-deep: #e08e0b;             /* gradient end of the mark's wedge */
+  --vd-accent2: oklch(0.7 0.23 300);     /* violet — secondary kickers */
+  --vd-good: oklch(0.75 0.2 145);        /* green — "open source" / status */
+  --vd-font-display: 'Anton', Impact, sans-serif;            /* uppercase headlines */
+  --vd-font-body: 'Archivo', system-ui, sans-serif;          /* body, buttons */
+  --vd-font-mono: 'JetBrains Mono', ui-monospace, monospace; /* kickers, captions */
+  --vd-radius-pill: 999px;
+  --vd-radius-card: 18px;
+  --vd-radius-tile: 24px;
+}

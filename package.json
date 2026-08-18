@@ -11,9 +11,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "scripts/cf-profile.sh use dev && vite build && wrangler deploy && scripts/cf-profile.sh save dev",
     "cf-typegen": "wrangler types",
-    "postinstall": "wrangler types"
+    "postinstall": "wrangler types",
+    "deploy:prod": "scripts/cf-profile.sh use prod && VITE_SITE_URL=https://viddescriptor.com vite build && wrangler deploy --env production && scripts/cf-profile.sh save prod",
+    "cf:login:dev": "scripts/cf-profile.sh login dev",
+    "cf:login:prod": "scripts/cf-profile.sh login prod",
+    "cf:secret:prod": "scripts/cf-profile.sh use prod && wrangler secret put PARTNER_API_KEY --env production"
   },
   "keywords": [],
   "author": "",

@@ -163,6 +163,26 @@ The clips bundled under `public/media/` are AI-generated originals shipped with 
 
 Don't want to run your own Cloudflare Worker? We'll deploy, brand, and operate Viddescriptor for you on your domain. Reach out: **support@kno2gether.com**.
 
+## Deploying to two Cloudflare accounts (dev + production)
+
+A Worker custom domain must live on the **same** Cloudflare account as the zone —
+a CNAME from a zone on account A to a Worker on account B fails with error 1014.
+If your dev subdomain and your production domain sit on different accounts:
+
+```bash
+npm run cf:login:dev    # wrangler login as the dev-zone account, saved as profile "dev"
+npm run cf:login:prod   # wrangler login as the production-zone account, saved as "prod"
+npm run deploy          # dev  → routes in wrangler.jsonc (top level)
+npm run deploy:prod     # prod → routes in wrangler.jsonc env.production
+npm run cf:secret:prod  # set PARTNER_API_KEY on the production Worker
+```
+
+Profiles are plain wrangler token files under `~/.wrangler-profiles/` swapped by
+`scripts/cf-profile.sh` (wrangler holds one active login). Edit both `routes`
+blocks and `SITE_URL` in `wrangler.jsonc` for your domains. If a hostname already
+has a manual A/CNAME record, delete it in the Cloudflare DNS dashboard first —
+wrangler creates the records itself (error 100117 otherwise).
+
 ## License
 
 Code is [MIT licensed](LICENSE) — copyright 2026 Kno2gether / Knolabs. Bundled media is licensed separately under [`LICENSE-MEDIA.md`](LICENSE-MEDIA.md).

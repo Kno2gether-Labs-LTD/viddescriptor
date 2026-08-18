@@ -3,6 +3,7 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-01",
   "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application" },
+  // Default target = DEV (Cloudflare account that owns kno2gether.com). `npm run deploy`
   "routes": [{ "pattern": "viddescriptor.kno2gether.com", "custom_domain": true }],
   "vars": {
     "PARTNER_API_BASE": "https://app.knotie-ai.pro",
@@ -13,5 +14,27 @@
     // set to your real top-up (e.g. 500) once the platform payment-link credit grant (knotie media_studio_v5+) is deployed
     "UPSELL_CREDITS": "0",
     "SITE_URL": "https://viddescriptor.kno2gether.com"
+  },
+  "env": {
+    // PRODUCTION = the Cloudflare account that owns viddescriptor.com. `npm run deploy:prod`
+    // (a Worker custom domain must live on the SAME account as the zone — a cross-account
+    // CNAME to a Worker gives Cloudflare error 1014). Vars are NOT inherited by envs: repeat them.
+    "production": {
+      "name": "viddescriptor",
+      "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application" },
+      "routes": [
+        { "pattern": "viddescriptor.com", "custom_domain": true },
+        { "pattern": "www.viddescriptor.com", "custom_domain": true }
+      ],
+      "vars": {
+        "PARTNER_API_BASE": "https://app.knotie-ai.pro",
+        "EXPERIENCE_TYPE": "media_studio",
+        "FREE_CREDITS": "300",
+        "UPSELL_AMOUNT_CENTS": "900",
+        "UPSELL_CURRENCY": "usd",
+        "UPSELL_CREDITS": "0",
+        "SITE_URL": "https://viddescriptor.com"
+      }
+    }
   }
 }
