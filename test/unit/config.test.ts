@@ -31,6 +31,8 @@ describe('buildConfig defaults (Viddescriptor brand)', () => {
       amountLabel: '$9',
       credits: 500,
       fromTo: '300 → 800',
+      amountCents: 900,
+      currency: 'usd',
     });
   });
 
@@ -135,17 +137,49 @@ describe('buildConfig env overrides', () => {
     expect(buildConfig({ VITE_FREE_CREDITS: 'not-a-number' }).freeCredits).toBe(300);
   });
 
-  it('respects upsell overrides', () => {
+  it('derives amountLabel and fromTo from VITE_UPSELL_AMOUNT_CENTS/CURRENCY/CREDITS (single source)', () => {
     const config = buildConfig({
-      VITE_UPSELL_AMOUNT_LABEL: '$19',
-      VITE_UPSELL_CREDITS: '1000',
-      VITE_UPSELL_FROM_TO: '300 → 1300',
+      VITE_UPSELL_AMOUNT_CENTS: '900',
+      VITE_UPSELL_CURRENCY: 'usd',
+      VITE_UPSELL_CREDITS: '1200',
     });
-    expect(config.upsell).toEqual({
-      amountLabel: '$19',
-      credits: 1000,
-      fromTo: '300 → 1300',
+    expect(config.upsell.amountCents).toBe(900);
+    expect(config.upsell.currency).toBe('usd');
+    expect(config.upsell.credits).toBe(1200);
+    expect(config.upsell.amountLabel).toBe('$9');
+    expect(config.upsell.fromTo).toBe('300 → 1500');
+  });
+
+  it('derives a fractional amountLabel for a non-round-dollar amount/currency', () => {
+    const config = buildConfig({ VITE_UPSELL_AMOUNT_CENTS: '950', VITE_UPSELL_CURRENCY: 'eur' });
+    expect(config.upsell.amountLabel).toBe('€9.50');
+  });
+
+  it('derives fromTo against a custom VITE_FREE_CREDITS', () => {
+    const config = buildConfig({ VITE_FREE_CREDITS: '100', VITE_UPSELL_CREDITS: '50' });
+    expect(config.upsell.fromTo).toBe('100 → 150');
+  });
+
+  it('lets VITE_UPSELL_AMOUNT_LABEL and VITE_UPSELL_FROM_TO override the derived values when set', () => {
+    const config = buildConfig({
+      VITE_UPSELL_AMOUNT_CENTS: '900',
+      VITE_UPSELL_CURRENCY: 'usd',
+      VITE_UPSELL_CREDITS: '1200',
+      VITE_UPSELL_AMOUNT_LABEL: '$19 special',
+      VITE_UPSELL_FROM_TO: 'a lot more',
     });
+    expect(config.upsell.amountLabel).toBe('$19 special');
+    expect(config.upsell.fromTo).toBe('a lot more');
+    // The underlying numeric fields still reflect the real cents/credits values.
+    expect(config.upsell.amountCents).toBe(900);
+    expect(config.upsell.credits).toBe(1200);
+  });
+
+  it('falls back to defaults for VITE_UPSELL_AMOUNT_CENTS/CURRENCY/CREDITS when unset', () => {
+    const config = buildConfig({});
+    expect(config.upsell.amountCents).toBe(900);
+    expect(config.upsell.currency).toBe('usd');
+    expect(config.upsell.credits).toBe(500);
   });
 
   it('respects VITE_BANNER_TEXT and interpolates {freeCredits} against the resolved value', () => {
@@ -214,5 +248,12 @@ describe('siteConfig', () => {
     expect(siteConfig.brandName).toBe('Viddescriptor');
     expect(siteConfig.freeCredits).toBe(300);
     expect(siteConfig.bannerText).toBe('OPEN SOURCE · 300 FREE CREDITS ON SIGNUP');
+  });
+});
+
+describe('URL normalization', () => {
+  it('strips trailing slashes from portalUrl so `${portalUrl}/login` never doubles the slash', () => {
+    const c = buildConfig({ VITE_PORTAL_URL: 'https://app.example.com/' });
+    expect(c.portalUrl).toBe('https://app.example.com');
   });
 });

@@ -5,14 +5,31 @@
   "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application" },
   // Default target = DEV (Cloudflare account that owns kno2gether.com). `npm run deploy`
   "routes": [{ "pattern": "viddescriptor.kno2gether.com", "custom_domain": true }],
+  // PARTNER_API_STYLE selects how the Worker talks to the partner platform with
+  // the same pkt_ key: "gateway" (default here) hits the MCP gateway
+  // (mcp.knotie-ai.pro) tool routes with `Authorization: Bearer`. To use the app
+  // routes directly instead, set PARTNER_API_STYLE to "direct" and
+  // PARTNER_API_BASE to "https://app.knotie-ai.pro" (uses `x-api-key`).
+  // These vars are FALLBACK DEFAULTS only. `.env`'s VITE_UPSELL_AMOUNT_CENTS /
+  // VITE_UPSELL_CURRENCY / VITE_UPSELL_CREDITS / VITE_FREE_CREDITS are the
+  // single source of truth — `npm run deploy` / `npm run deploy:prod`
+  // (scripts/deploy.sh) forward them here as `wrangler deploy --var`
+  // overrides at deploy time. Edit `.env` to change the live offer; only
+  // change these when you want the fallback itself to differ (e.g. this repo
+  // has no `.env`, or a var is deliberately left unset in it).
   "vars": {
+    // Gateway (mcp.knotie-ai.pro, PARTNER_API_STYLE=gateway) is the documented production surface;
+    // switched to direct on 2026-08-18 because the gateway origin returned 502 on tool calls. Flip back once healthy.
     "PARTNER_API_BASE": "https://app.knotie-ai.pro",
-    "EXPERIENCE_TYPE": "media_studio",
+    "PARTNER_API_STYLE": "direct",
+    "EXPERIENCE_TYPE": "MEDIA_STUDIO",
     "FREE_CREDITS": "300",
     "UPSELL_AMOUNT_CENTS": "900",
     "UPSELL_CURRENCY": "usd",
-    // set to your real top-up (e.g. 500) once the platform payment-link credit grant (knotie media_studio_v5+) is deployed
-    "UPSELL_CREDITS": "0",
+    // Sane open-source default now that the platform payment-link credit grant
+    // (knotie media_studio_v5+) is live — override in your own `.env` via
+    // VITE_UPSELL_CREDITS.
+    "UPSELL_CREDITS": "500",
     "SITE_URL": "https://viddescriptor.kno2gether.com"
   },
   "env": {
@@ -26,13 +43,17 @@
         { "pattern": "viddescriptor.com", "custom_domain": true },
         { "pattern": "www.viddescriptor.com", "custom_domain": true }
       ],
+      // Fallback defaults only — see the top-level `vars` comment above.
+      // `npm run deploy:prod` forwards `.env`'s VITE_UPSELL_*/VITE_FREE_CREDITS
+      // here as `wrangler deploy --env production --var` overrides.
       "vars": {
         "PARTNER_API_BASE": "https://app.knotie-ai.pro",
-        "EXPERIENCE_TYPE": "media_studio",
+        "PARTNER_API_STYLE": "direct",
+        "EXPERIENCE_TYPE": "MEDIA_STUDIO",
         "FREE_CREDITS": "300",
         "UPSELL_AMOUNT_CENTS": "900",
         "UPSELL_CURRENCY": "usd",
-        "UPSELL_CREDITS": "0",
+        "UPSELL_CREDITS": "500",
         "SITE_URL": "https://viddescriptor.com"
       }
     }

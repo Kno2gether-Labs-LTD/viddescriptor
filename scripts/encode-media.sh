@@ -300,7 +300,7 @@ fi
 # =========================================================================
 # Local-only source dir, same optional-skip convention as media-src/wave2/
 # and media-src/owner/ above. Three real films (native res, no upscale —
-# these are 960x540 sources) plus four stills (storyboard, two character
+# these are 960x540 sources) plus three stills (two character
 # sheets, contact sheet) for the Cinema section (src/components/Cinema.tsx).
 FILMS_DIR="$ROOT_DIR/media-src/films"
 
@@ -350,9 +350,8 @@ film-cave:yeti-960.mp4
     echo "  -> $out ($(human_size "$size")), poster -> $poster"
   done <<< "$FILM_MAP"
 
-  # Stills: portal storyboard screenshot, two character sheets, contact sheet.
+  # Stills: two character sheets, contact sheet.
   FILM_STILL_MAP="
-film-storyboard:paper-boat-storyboard.jpg:1600:5
 film-sheet-boat:paper-boat-sheet-boat.jpg:900:5
 film-sheet-duck:paper-boat-sheet-duck.jpg:900:5
 film-contact:paper-boat-contact.jpg:1200:5

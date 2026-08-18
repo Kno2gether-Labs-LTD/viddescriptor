@@ -63,7 +63,6 @@ export type SlotId =
   | 'filmPaperBoat'
   | 'filmLighthouse'
   | 'filmCave'
-  | 'filmStoryboard'
   | 'filmSheetBoat'
   | 'filmSheetDuck'
   | 'filmContact';
@@ -97,7 +96,6 @@ const PENDING_STEMS: Partial<Record<SlotId, string>> = {
   filmPaperBoat: 'film-paper-boat',
   filmLighthouse: 'film-lighthouse',
   filmCave: 'film-cave',
-  filmStoryboard: 'film-storyboard',
   filmSheetBoat: 'film-sheet-boat',
   filmSheetDuck: 'film-sheet-duck',
   filmContact: 'film-contact',
@@ -180,7 +178,6 @@ export const MEDIA: Record<SlotId, MediaEntry> = {
   filmCave: slot('filmCave'),
   // Cinema stills — portal storyboard screenshot, two character sheets, a
   // contact sheet. Still images, no poster.
-  filmStoryboard: imageSlot('filmStoryboard'),
   filmSheetBoat: imageSlot('filmSheetBoat'),
   filmSheetDuck: imageSlot('filmSheetDuck'),
   filmContact: imageSlot('filmContact'),

@@ -7,6 +7,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     ASSETS: {} as Fetcher,
     PARTNER_API_BASE: 'https://partner.example.com',
     PARTNER_API_KEY: 'test-key',
+    PARTNER_API_STYLE: 'direct',
     EXPERIENCE_TYPE: 'viddescriptor',
     FREE_CREDITS: '300',
     UPSELL_AMOUNT_CENTS: '900',
@@ -36,7 +37,7 @@ describe('POST /api/checkout', () => {
         interval: 'one_time',
         successUrl: 'https://viddescriptor.com/?pay=success',
         cancelUrl: 'https://viddescriptor.com/?pay=cancelled',
-        description: 'Viddescriptor credit doubler',
+        description: 'Credit top-up · +500 credits',
         features: { initialAiCredits: 500 },
       });
       return new Response(
@@ -71,7 +72,7 @@ describe('POST /api/checkout', () => {
         interval: 'one_time',
         successUrl: 'https://viddescriptor.com/?pay=success',
         cancelUrl: 'https://viddescriptor.com/?pay=cancelled',
-        description: 'Viddescriptor credit doubler',
+        description: 'Credit top-up · +0 credits',
       });
       return new Response(
         JSON.stringify({ intentId: 'intent_zero', url: 'https://checkout.stripe.com/zero', status: 'created' }),
@@ -246,6 +247,45 @@ describe('POST /api/checkout', () => {
     );
     expect(sixth.status).toBe(429);
   });
+
+  it('mints a payment link via the gateway tool with Bearer auth and the exact body (gateway style)', async () => {
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toBe('https://partner.example.com/api/partner-rest/tools/payment_links_create');
+      const headers = new Headers(init.headers);
+      expect(headers.get('authorization')).toBe('Bearer test-key');
+      expect(headers.has('x-api-key')).toBe(false);
+      expect(headers.get('content-type')).toBe('application/json');
+      const body = JSON.parse(init.body as string);
+      expect(body).toEqual({
+        customerId: 'cust_gw',
+        amount: 900,
+        currency: 'usd',
+        interval: 'one_time',
+        successUrl: 'https://viddescriptor.com/?pay=success',
+        cancelUrl: 'https://viddescriptor.com/?pay=cancelled',
+        description: 'Credit top-up · +500 credits',
+        features: { initialAiCredits: 500 },
+      });
+      return new Response(
+        JSON.stringify({ intentId: 'intent_gw', url: 'https://checkout.stripe.com/gw', status: 'created' }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await app.request(
+      '/api/checkout',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'CF-Connecting-IP': 'ip-checkout-gateway' },
+        body: JSON.stringify({ customerId: 'cust_gw' }),
+      },
+      makeEnv({ PARTNER_API_STYLE: 'gateway' }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: 'https://checkout.stripe.com/gw', intentId: 'intent_gw' });
+  });
 });
 
 describe('GET /api/verify', () => {
@@ -352,5 +392,28 @@ describe('GET /api/verify', () => {
       env,
     );
     expect(overLimit.status).toBe(429);
+  });
+
+  it('polls status via the gateway tool with POST + {intentId} body and Bearer auth (gateway style)', async () => {
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toBe('https://partner.example.com/api/partner-rest/tools/payment_links_status');
+      expect(init.method).toBe('POST');
+      const headers = new Headers(init.headers);
+      expect(headers.get('authorization')).toBe('Bearer test-key');
+      expect(headers.has('x-api-key')).toBe(false);
+      const body = JSON.parse(init.body as string);
+      expect(body).toEqual({ intentId: 'intent_abc' });
+      return new Response(JSON.stringify({ status: 'paid' }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await app.request(
+      '/api/verify?intent=intent_abc',
+      { headers: { 'CF-Connecting-IP': 'ip-verify-gateway' } },
+      makeEnv({ PARTNER_API_STYLE: 'gateway' }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'paid' });
   });
 });

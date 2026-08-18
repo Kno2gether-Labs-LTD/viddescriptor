@@ -53,7 +53,6 @@ describe('Cinema — Director agent showcase', () => {
     expect(container.querySelector(`img[src="${MEDIA.filmSheetBoat.src}"]`)).toBeInTheDocument();
     expect(container.querySelector(`img[src="${MEDIA.filmSheetDuck.src}"]`)).toBeInTheDocument();
     expect(container.querySelector(`img[src="${MEDIA.filmContact.src}"]`)).toBeInTheDocument();
-    expect(container.querySelector(`img[src="${MEDIA.filmStoryboard.src}"]`)).toBeInTheDocument();
   });
 
   it('never quotes credit prices, render times, or provider/model names', () => {

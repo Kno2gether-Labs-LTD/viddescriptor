@@ -10,9 +10,9 @@ describe('MEDIA slot registry (production media set)', () => {
   const slotIds = Object.keys(MEDIA) as SlotId[];
   const shippedSlotIds = slotIds.filter((id) => !PENDING_MEDIA.has(id));
 
-  it('has all 43 slots, all shipped (PENDING_MEDIA is empty)', () => {
-    expect(slotIds.length).toBe(43);
-    expect(shippedSlotIds.length).toBe(43);
+  it('has all 42 slots, all shipped (PENDING_MEDIA is empty)', () => {
+    expect(slotIds.length).toBe(42);
+    expect(shippedSlotIds.length).toBe(42);
     expect(PENDING_MEDIA.size).toBe(0);
   });
 
@@ -80,8 +80,6 @@ describe('MEDIA slot registry (production media set)', () => {
   });
 
   it('the four Cinema stills are still images, not videos — no .mp4/poster', () => {
-    expect(MEDIA.filmStoryboard.src).toBe('/media/film-storyboard.jpg');
-    expect(MEDIA.filmStoryboard.poster).toBeUndefined();
     expect(MEDIA.filmSheetBoat.src).toBe('/media/film-sheet-boat.jpg');
     expect(MEDIA.filmSheetBoat.poster).toBeUndefined();
     expect(MEDIA.filmSheetDuck.src).toBe('/media/film-sheet-duck.jpg');

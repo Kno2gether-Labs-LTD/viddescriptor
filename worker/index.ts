@@ -1,8 +1,22 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from './env';
-import { partnerFetch } from './partnerApi';
+import { partnerCall } from './partnerApi';
 import { checkRate } from './rateLimit';
+
+
+/** Feature toggles sent with every onboard. Binding an experience alone does not turn the
+ *  studio nav on for the customer, so the default enables Media Studio; deployers of other
+ *  experiences override via ONBOARD_FEATURES_JSON. Invalid JSON / non-object → default. */
+export const DEFAULT_ONBOARD_FEATURES: Record<string, unknown> = { showMediaStudio: true };
+export function parseOnboardFeatures(raw: string | undefined): Record<string, unknown> | null {
+  if (raw === undefined || raw === '') return DEFAULT_ONBOARD_FEATURES;
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v === 'object' && !Array.isArray(v)) return Object.keys(v).length ? (v as Record<string, unknown>) : null;
+  } catch { /* fall through */ }
+  return DEFAULT_ONBOARD_FEATURES;
+}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -47,7 +61,8 @@ app.get('/api/health', (c) => c.json({ ok: true }));
 /**
  * POST /api/signup { email } → 200 { customerId, alreadyExisted? } | 400 | 429 | 502
  *
- * Proxies POST {PARTNER_API_BASE}/api/partner/customers/onboard. The partner
+ * Proxies to the partner onboard operation (see worker/partnerApi.ts for the
+ * direct vs. gateway URL mapping). The partner
  * API answers a duplicate email with HTTP 200 + `existing: true` (there is no
  * 409 path) — that maps to `alreadyExisted: true` here, still a 200.
  */
@@ -65,6 +80,7 @@ app.post('/api/signup', async (c) => {
   }
 
   const env = c.env;
+  const onboardFeatures = parseOnboardFeatures(env.ONBOARD_FEATURES_JSON);
   const payload: Record<string, unknown> = {
     email,
     experienceType: env.EXPERIENCE_TYPE,
@@ -72,14 +88,12 @@ app.post('/api/signup', async (c) => {
     idempotencyKey: email,
     sendWelcomeEmail: true,
     ...(env.FREE_PLAN_ID ? { planId: env.FREE_PLAN_ID } : {}),
+    ...(onboardFeatures ? { features: onboardFeatures } : {}),
   };
 
   let res: Response;
   try {
-    res = await partnerFetch(env, '/api/partner/customers/onboard', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    res = await partnerCall(env, 'onboard', payload);
   } catch (err) {
     console.error('signup: partner onboard request failed', err);
     return c.json({ error: FRIENDLY_UNAVAILABLE }, 502);
@@ -150,7 +164,7 @@ app.post('/api/checkout', async (c) => {
     interval: 'one_time',
     successUrl: `${env.SITE_URL}/?pay=success`,
     cancelUrl: `${env.SITE_URL}/?pay=cancelled`,
-    description: 'Viddescriptor credit doubler',
+    description: `Credit top-up · +${upsellCredits} credits`,
     // Grant is read off the intent row by the (separately-extended) payment
     // webhook — see docs/notes/upsell-grant.md. Omitted entirely at 0 rather
     // than sent as {initialAiCredits: 0}, since the webhook's feature-apply
@@ -160,10 +174,7 @@ app.post('/api/checkout', async (c) => {
 
   let res: Response;
   try {
-    res = await partnerFetch(env, '/api/partner/payment-links', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    res = await partnerCall(env, 'paymentLinkCreate', payload);
   } catch (err) {
     console.error('checkout: partner payment-link mint failed', err);
     return c.json({ error: FRIENDLY_UNAVAILABLE }, 502);
@@ -205,7 +216,8 @@ function mapPaymentStatus(rawStatus: string): VerifyStatus {
 /**
  * GET /api/verify?intent=… → 200 { status } | 400 | 429 | 502
  *
- * Proxies GET {PARTNER_API_BASE}/api/partner/payment-links/{intentId}.
+ * Proxies to the partner payment-link status operation (see
+ * worker/partnerApi.ts for the direct vs. gateway URL/method mapping).
  */
 app.get('/api/verify', async (c) => {
   const ip = clientIp(c);
@@ -221,9 +233,7 @@ app.get('/api/verify', async (c) => {
   const env = c.env;
   let res: Response;
   try {
-    res = await partnerFetch(env, `/api/partner/payment-links/${encodeURIComponent(intentId)}`, {
-      method: 'GET',
-    });
+    res = await partnerCall(env, 'paymentLinkStatus', { intentId });
   } catch (err) {
     console.error('verify: partner payment-link lookup failed', err);
     return c.json({ error: FRIENDLY_UNAVAILABLE }, 502);

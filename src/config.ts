@@ -62,6 +62,8 @@ export type SiteConfig = {
     amountLabel: string;
     credits: number;
     fromTo: string;
+    amountCents: number;
+    currency: string;
   };
   offerEndsAt?: string;
   pricing: Pricing;
@@ -96,11 +98,31 @@ const DEFAULT_FREE_CREDITS = 300;
 // `{freeCredits}` is interpolated with the resolved freeCredits value (see
 // buildConfig) — no implied event ("launch week"), just the real offer.
 const DEFAULT_BANNER_TEXT = 'OPEN SOURCE · {freeCredits} FREE CREDITS ON SIGNUP';
-const DEFAULT_UPSELL = {
-  amountLabel: '$9',
-  credits: 500,
-  fromTo: '300 → 800',
-};
+// Single source of truth for the upsell offer. `amountLabel` and `fromTo` are
+// DERIVED from these (see `formatUpsellAmountLabel`/buildConfig below) —
+// VITE_UPSELL_AMOUNT_LABEL / VITE_UPSELL_FROM_TO only exist as optional,
+// backwards-compatible overrides for a fork that wants custom copy the
+// formula can't produce.
+const DEFAULT_UPSELL_AMOUNT_CENTS = 900;
+const DEFAULT_UPSELL_CURRENCY = 'usd';
+const DEFAULT_UPSELL_CREDITS = 500;
+
+/** Formats a whole/fractional currency amount from integer cents, e.g.
+ *  (900, 'usd') → "$9", (950, 'eur') → "€9.50". Whole-dollar amounts render
+ *  with no decimals; fractional amounts keep up to 2. Falls back to a plain
+ *  numeric label if `currency` isn't a valid ISO 4217 code. */
+function formatUpsellAmountLabel(amountCents: number, currency: string): string {
+  const maximumFractionDigits = amountCents % 100 === 0 ? 0 : 2;
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits,
+    }).format(amountCents / 100);
+  } catch {
+    return `${(amountCents / 100).toFixed(maximumFractionDigits)} ${currency.toUpperCase()}`;
+  }
+}
 
 const DEFAULT_PRICING: Pricing = {
   payg: [
@@ -222,18 +244,27 @@ export function buildConfig(env: EnvLike): SiteConfig {
       subtext: readString(env, 'VITE_HERO_SUBTEXT', DEFAULT_HERO.subtext),
     },
     logoUrl: readOptionalString(env, 'VITE_LOGO_URL'),
-    siteUrl: readString(env, 'VITE_SITE_URL', DEFAULT_SITE_URL),
+    siteUrl: readString(env, 'VITE_SITE_URL', DEFAULT_SITE_URL).replace(/\/+$/, ''),
     supportEmail: readString(env, 'VITE_SUPPORT_EMAIL', DEFAULT_SUPPORT_EMAIL),
-    portalUrl: readString(env, 'VITE_PORTAL_URL', DEFAULT_PORTAL_URL),
+    portalUrl: readString(env, 'VITE_PORTAL_URL', DEFAULT_PORTAL_URL).replace(/\/+$/, ''),
     githubUrl: readString(env, 'VITE_GITHUB_URL', DEFAULT_GITHUB_URL),
     socials: readJson<SocialLink[]>(env, 'VITE_SOCIALS_JSON', []),
     freeCredits,
     bannerText: bannerTemplate.replace('{freeCredits}', String(freeCredits)),
-    upsell: {
-      amountLabel: readString(env, 'VITE_UPSELL_AMOUNT_LABEL', DEFAULT_UPSELL.amountLabel),
-      credits: readNumber(env, 'VITE_UPSELL_CREDITS', DEFAULT_UPSELL.credits),
-      fromTo: readString(env, 'VITE_UPSELL_FROM_TO', DEFAULT_UPSELL.fromTo),
-    },
+    upsell: (() => {
+      const amountCents = readNumber(env, 'VITE_UPSELL_AMOUNT_CENTS', DEFAULT_UPSELL_AMOUNT_CENTS);
+      const currency = readString(env, 'VITE_UPSELL_CURRENCY', DEFAULT_UPSELL_CURRENCY);
+      const credits = readNumber(env, 'VITE_UPSELL_CREDITS', DEFAULT_UPSELL_CREDITS);
+      const derivedAmountLabel = formatUpsellAmountLabel(amountCents, currency);
+      const derivedFromTo = `${freeCredits} → ${freeCredits + credits}`;
+      return {
+        amountLabel: readOptionalString(env, 'VITE_UPSELL_AMOUNT_LABEL') ?? derivedAmountLabel,
+        credits,
+        fromTo: readOptionalString(env, 'VITE_UPSELL_FROM_TO') ?? derivedFromTo,
+        amountCents,
+        currency,
+      };
+    })(),
     offerEndsAt: readOptionalString(env, 'VITE_OFFER_ENDS_AT'),
     pricing: readJson<Pricing>(env, 'VITE_PRICING_JSON', DEFAULT_PRICING),
     showSampleSocialProof: readBoolean(env, 'VITE_SHOW_SAMPLE_SOCIAL_PROOF', false),

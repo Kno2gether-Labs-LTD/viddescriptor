@@ -148,20 +148,6 @@ export function Cinema({ onOpenFlow }: CinemaProps): ReactElement {
           </div>
         </div>
 
-        {/* Wide artefact tile — the storyboard canvas. A UI screenshot, so
-            it's dimmed with the page's usual gradient to read as an
-            artefact rather than a marketing shot. */}
-        <div style={{ position: 'relative', marginTop: 14, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,.09)' }}>
-          <img
-            src={MEDIA.filmStoryboard.src}
-            alt="The film on the storyboard canvas — scenes, takes and the cut, with a live spend ledger"
-            style={{ width: '100%', aspectRatio: '21/9', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
-          />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,transparent 55%,rgba(10,10,9,.92))' }} />
-          <div style={{ position: 'absolute', left: 16, right: 16, bottom: 12, font: "400 11.5px/1.5 var(--font-mono)", color: 'rgba(245,243,238,.85)' }}>
-            The film on the storyboard canvas — scenes, takes and the cut, with a live spend ledger.
-          </div>
-        </div>
       </div>
 
       <div style={{ marginTop: 30, textAlign: 'center' }}>
